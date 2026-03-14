@@ -50,8 +50,8 @@ body{margin:0;padding:0;font-family:sans-serif;}
 #qa-cancel{background:#eee;color:#555;border:none;border-radius:18px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;}
 #qa-cancel:hover{background:#ddd;}
 
-#form{padding:12px 14px;background:#e3f2fd;border-top:2px solid #1976d2;flex-shrink:0;}
-#ftitle{font-size:13px;font-weight:700;color:#1565c0;margin-bottom:8px;}
+
+
 #form input,#form textarea{width:100%;border:1px solid #ccc;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:6px;outline:none;background:white;transition:border-color .2s;}
 #form input:focus,#form textarea:focus{border-color:#1976d2;}
 #form textarea{height:46px;resize:none;}
@@ -61,7 +61,7 @@ body{margin:0;padding:0;font-family:sans-serif;}
 #fsave{flex:1;background:#1976d2;color:white;border:none;border-radius:18px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;}
 #fsave:hover{background:#1565c0;}
 #fsave:disabled{background:#90caf9;cursor:not-allowed;}
-#fcanc{flex:1;background:#eee;color:#333;border:none;border-radius:18px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;display:none;}
+
 #fcanc:hover{background:#ddd;}
 
 .card{border:1px solid #ddd;border-radius:10px;padding:10px;margin-bottom:8px;cursor:pointer;transition:border-color .2s;}
@@ -93,6 +93,7 @@ body{margin:0;padding:0;font-family:sans-serif;}
   #side.hidden{transform:translateY(55vh);}
   #locbtn{bottom:calc(55vh + 10px);}
   #locbtn.sidebar-hidden{bottom:24px;}
+  #add-overlay{width:100%;top:auto;bottom:0;height:70vh;border-left:none;border-top:2px solid #1565c0;}
 }
 
 #tree{flex-shrink:0;max-height:200px;overflow-y:auto;border-bottom:2px solid #e0e0e0;}
@@ -121,6 +122,23 @@ body{margin:0;padding:0;font-family:sans-serif;}
 
 
 .card-highlight{border-color:#1976d2 !important;background:#e3f2fd !important;box-shadow:0 0 0 3px rgba(33,150,243,.3);}
+
+#addspot-btn{padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:#1565c0;color:white;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0;}
+#addspot-btn:hover,#addspot-btn.on{background:#0d47a1;}
+#myloc-btn{padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:#43a047;color:white;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0;}
+#myloc-btn:hover{background:#388e3c;}
+#add-overlay{display:none;position:fixed;top:50px;right:0;width:340px;height:calc(100vh - 50px);background:white;z-index:600;flex-direction:column;border-left:1px solid #ccc;}
+#add-overlay.show{display:flex;}
+#add-overlay-hdr{background:#1565c0;color:white;padding:13px 14px;font-size:13px;font-weight:700;display:flex;align-items:center;flex-shrink:0;}
+#add-overlay-body{padding:14px;display:flex;flex-direction:column;gap:10px;flex:1;overflow-y:auto;}
+#add-search-row{display:flex;gap:6px;}
+#add-addr-box{display:none;background:#f0f7ff;border:1px solid #bbdefb;border-radius:8px;padding:10px 12px;font-size:12px;}
+#add-desc{display:none;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;resize:none;font-family:inherit;outline:none;min-height:80px;}
+#add-save-btn{display:none;padding:13px;background:#43a047;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;}
+#add-save-btn:hover{background:#388e3c;}
+#add-status{font-size:11px;color:#888;min-height:14px;}
+.add-step-label{font-size:12px;font-weight:700;color:#333;}
+
 </style>
 </head>
 <body>
@@ -129,8 +147,9 @@ body{margin:0;padding:0;font-family:sans-serif;}
   <h1>🅿️ PFA <span style="font-size:10px;opacity:.6;font-weight:400">Parking For All</span></h1>
   <input id="sinput" placeholder="Search a location…"/>
   <button id="sbtn">🔍 Search</button>
-  <button id="myloc-btn" onclick="locateAndAdd()">📍 Add Current Location</button>
-  <button id="toggle-btn" onclick="toggleSidebar()">☰ Hide</button>
+  <button id="myloc-btn" onclick="locateAndAdd()">📍 My Location</button>
+  <button id="addspot-btn" onclick="openAddPanel()">➕ Add Spot</button>
+  <button id="toggle-btn" onclick="toggleSidebar()">☰</button>
 </div>
 
 <div id="map" class="split"></div>
@@ -177,24 +196,148 @@ body{margin:0;padding:0;font-family:sans-serif;}
     </div>
   </div>
 
-  <div id="form">
-    <div id="ftitle">➕ Manually add a PFA spot</div>
-    <input id="fa" placeholder="Street address *"/>
-    <input id="fc" placeholder="City / Suburb *"/>
-    <input id="fco" placeholder="Country (e.g. Australia, USA) *"/>
-    <textarea id="fn" placeholder="Notes (e.g. Free 2hr, no limit after 6pm)"></textarea>
-    <div id="gstatus"></div>
-    <div id="fbrow">
-      <button id="fsave" onclick="save()">📍 Save Spot</button>
-      <button id="fcanc" onclick="cancelEdit()">Cancel</button>
-    </div>
-  </div>
+  
 </div>
 
 <button id="locbtn" onclick="locate()">📍</button>
 <div id="toast"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+// ── ADD SPOT PANEL ─────────────────────────────────────────────────────────
+var addPnd={lat:null,lng:null,addr:'',c:'',co:'',cc:'',state:'',city:'',suburb:''};
+var addMk=null;
+
+function openAddPanel(){
+  document.getElementById('add-overlay').classList.add('show');
+  document.getElementById('addspot-btn').classList.add('on');
+  document.getElementById('add-input').value='';
+  document.getElementById('add-status').textContent='';
+  document.getElementById('add-addr-box').style.display='none';
+  document.getElementById('add-desc').style.display='none';
+  document.getElementById('add-desc').value='';
+  document.getElementById('add-save-btn').style.display='none';
+  document.getElementById('add-step2-label').style.display='none';
+  if(!sidebarVisible) toggleSidebar();
+  setTimeout(function(){document.getElementById('add-input').focus();},100);
+}
+
+function closeAddPanel(){
+  document.getElementById('add-overlay').classList.remove('show');
+  document.getElementById('addspot-btn').classList.remove('on');
+  if(addMk){map.removeLayer(addMk);addMk=null;}
+  addPnd={lat:null,lng:null,addr:'',c:'',co:'',cc:'',state:'',city:'',suburb:''};
+  // Reset to add mode
+  document.getElementById('add-overlay-hdr-title').textContent='➕ Add Free Parking Spot';
+  document.getElementById('add-save-btn').textContent='📍 Save Free Parking Spot';
+  document.getElementById('add-save-btn').onclick=saveAddSpot;
+  document.getElementById('add-input').value='';
+  document.getElementById('add-desc').value='';
+  document.getElementById('add-addr-box').style.display='none';
+  document.getElementById('add-desc').style.display='none';
+  document.getElementById('add-save-btn').style.display='none';
+  document.getElementById('add-step2-label').style.display='none';
+  document.getElementById('add-status').textContent='';
+}
+
+async function searchAddSpot(){
+  var q=document.getElementById('add-input').value.trim();
+  if(!q){document.getElementById('add-status').textContent='Please enter an address.';return;}
+  document.getElementById('add-status').textContent='🔍 Searching…';
+  document.getElementById('add-addr-box').style.display='none';
+  document.getElementById('add-desc').style.display='none';
+  document.getElementById('add-save-btn').style.display='none';
+  document.getElementById('add-step2-label').style.display='none';
+  try{
+    var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q='+encodeURIComponent(q),{headers:{'Accept-Language':'en'}});
+    var d=await r.json();
+    if(!d||!d.length){document.getElementById('add-status').textContent='❌ Location not found. Try a more specific address.';return;}
+    var res=d[0], a=res.address||{};
+    var lat=parseFloat(res.lat), lng=parseFloat(res.lon);
+    var num=a.house_number||'', road=a.road||a.pedestrian||a.path||'';
+    var suburb2=a.suburb||a.neighbourhood||a.quarter||a.village||'';
+    // Use city/town first; fall back to suburb. Never use county (council area).
+    var city2=a.city||a.town||'';
+    // If no city/town found, use the suburb as the city (common in AU/NZ)
+    if(!city2) city2=suburb2||'';
+    var state2=a.state||a.region||'';
+    var country=a.country||'';
+    var cc2=(a.country_code||'').toUpperCase();
+    var street=[num,road].filter(Boolean).join(' ')||q;
+    var cityLine=[suburb2,city2,state2].filter(Boolean).join(', ');
+    addPnd={lat:lat,lng:lng,addr:street,c:cityLine,co:country,cc:cc2,state:state2,city:city2,suburb:suburb2};
+    // Drop pin and fly map
+    if(addMk)map.removeLayer(addMk);
+    addMk=L.marker([lat,lng],{icon:greenIcon}).addTo(map)
+      .bindPopup('<b>'+street+'</b><br><small>'+cityLine+'</small>').openPopup();
+    map.flyTo([lat,lng],16,{duration:1});
+    // Show address confirmation
+    document.getElementById('add-addr-box').innerHTML=
+      '<div style="font-weight:700;font-size:13px;">'+fl(cc2)+' '+street+'</div>'+
+      '<div style="font-size:11px;color:#666;margin-top:3px;">'+cityLine+(country?', '+country:'')+'</div>';
+    document.getElementById('add-addr-box').style.display='block';
+    document.getElementById('add-step2-label').style.display='block';
+    document.getElementById('add-desc').style.display='block';
+    document.getElementById('add-save-btn').style.display='block';
+    document.getElementById('add-status').textContent='✅ Found! Add a description and save.';
+    setTimeout(function(){document.getElementById('add-desc').focus();},100);
+  }catch(e){
+    document.getElementById('add-status').textContent='❌ Search failed. Check your connection.';
+  }
+}
+
+function saveAddSpot(){
+  if(!addPnd.lat){document.getElementById('add-status').textContent='Search for a location first.';return;}
+  var notes=document.getElementById('add-desc').value.trim();
+  if(!notes){document.getElementById('add-status').textContent='⚠️ Please add a description first.';document.getElementById('add-desc').focus();return;}
+  var s={id:nid++,lat:addPnd.lat,lng:addPnd.lng,
+    a:addPnd.addr,c:addPnd.c,co:addPnd.co,cc:addPnd.cc,
+    state:addPnd.state,city:addPnd.city,suburb:addPnd.suburb,
+    n:notes,up:0,dn:0,uv:[],dv:[]};
+  spots.push(s);
+  if(addMk){map.removeLayer(addMk);addMk=null;}
+  putMk(s);
+  buildTree();
+  closeAddPanel();
+  toast('✅ PFA spot saved!');
+}
+
+
+function saveEditSpot(id){
+  var notes=document.getElementById('add-desc').value.trim();
+  if(!notes){document.getElementById('add-status').textContent='⚠️ Description cannot be empty.';document.getElementById('add-desc').focus();return;}
+  var s=spots.find(function(x){return x.id===id;});
+  if(!s)return;
+  s.n=notes;
+  // Reset votes on edit
+  s.up=0;s.dn=0;s.uv=[];s.dv=[];
+  buildTree();render();
+  // Reset save button back to Add mode
+  document.getElementById('add-save-btn').onclick=saveAddSpot;
+  document.getElementById('add-save-btn').textContent='📍 Save Free Parking Spot';
+  document.getElementById('add-overlay-hdr-title').textContent='➕ Add Free Parking Spot';
+  closeAddPanel();
+  toast('✅ Spot updated!');
+}
+
+
+function openTreeToSpot(s){
+  var p=getParts(s);
+  var confirmed=s.up>=(typeof NEED_OK!=='undefined'?NEED_OK:1);
+  var sec=confirmed?'conf':'unconf';
+  var ckey=sec+'|'+s.cc;
+  var stkey=sec+'|'+s.cc+'|'+p.state;
+  var ctkey=sec+'|'+s.cc+'|'+p.state+'|'+p.city;
+  var subkey=sec+'|'+s.cc+'|'+p.state+'|'+p.city+'|'+p.suburb;
+  // Open all tree levels leading to this spot
+  tSecOpen[sec]=true;
+  tCCOpen[ckey]=true;
+  tStOpen[stkey]=true;
+  tCityOpen[ctkey]=true;
+  tSubOpen[subkey]=true;
+  buildTree();
+}
+
+</script>
 <script>
 const NEED_OK=1, NEED_REM=1;
 function fl(cc){
@@ -584,19 +727,17 @@ function tGoSpot(id,e){
 }
 
 function getParts(s){
-  // Use dedicated fields if available (set during geocode)
-  var country = s.co||"";
-  var state   = s.state||"";
-  var city    = s.city||"";
-  var suburb  = s.suburb||s.c||"";
-  // Fallback: parse from s.c if structured fields missing
-  if(!state){
+  var state  = s.state  || "";
+  var city   = s.city   || "";
+  var suburb = s.suburb || "";
+  // Fallback parse from s.c for old/seed spots
+  if(!state || !city){
     var parts=(s.c||"").split(",").map(function(x){return x.trim();}).filter(function(x){return x&&!/^\d+$/.test(x);});
-    suburb=parts[0]||"—";
-    state=parts.length>1?parts[parts.length-1]:suburb;
-    city=parts.length>1?parts[0]:suburb;
+    if(!suburb) suburb = parts[0]||"—";
+    if(!city)   city   = parts.length>1?parts[1]:parts[0]||suburb;
+    if(!state)  state  = parts.length>1?parts[parts.length-1]:suburb;
   }
-  return{country:country, state:state, city:city, suburb:suburb};
+  return{state:state, city:city, suburb:suburb};
 }
 
 function buildSecBody(sec,list){
@@ -762,7 +903,12 @@ function ppop(s){return`<b>${fl(s.cc)} ${s.a}</b><br><small>${s.c}, ${s.co}</sma
 function putMk(s){
   if(mks[s.id])map.removeLayer(mks[s.id]);
   const m=L.marker([s.lat,s.lng],{icon:ico(s)}).addTo(map).bindPopup(ppop(s));
-  m.on("click",()=>document.getElementById("c"+s.id)?.scrollIntoView({behavior:"smooth",block:"nearest"}));
+  m.on("click",function(){
+    // Open the tree path to this spot and show its card
+    tGoSpot(s.id, null);
+    // Also open the tree to reveal the spot
+    openTreeToSpot(s);
+  });
   mks[s.id]=m;
 }
 
@@ -839,23 +985,34 @@ function del(id,e){
 function startEdit(id,e){
   e.stopPropagation();
   const s=spots.find(x=>x.id===id);if(!s)return;
-  eid=id;
-  document.getElementById("fa").value=s.a;
-  document.getElementById("fc").value=s.c;
-  document.getElementById("fco").value=s.co;
-  document.getElementById("fn").value=s.n||"";
-  document.getElementById("ftitle").textContent="✏️ Edit spot";
-  document.getElementById("fcanc").style.display="block";
-  document.getElementById("fsave").textContent="💾 Update";
-  gs("Editing — votes will reset on save.","gld");
-  document.getElementById("form").scrollIntoView({behavior:"smooth"});
+  // Open add-overlay in edit mode
+  document.getElementById('add-overlay').classList.add('show');
+  document.getElementById('addspot-btn').classList.add('on');
+  // Change header to Edit mode
+  document.getElementById('add-overlay-hdr-title').textContent='✏️ Edit Parking Spot';
+  document.getElementById('add-overlay-hdr-title').dataset.editId=id;
+  // Pre-fill address (read-only in edit mode) and description
+  document.getElementById('add-input').value=s.a;
+  document.getElementById('add-status').textContent='Edit the description below and save.';
+  // Show address box pre-filled
+  document.getElementById('add-addr-box').innerHTML=
+    '<div style="font-weight:700;font-size:13px;">'+(s.cc?fl(s.cc)+' ':'')+s.a+'</div>'+
+    '<div style="font-size:11px;color:#666;margin-top:3px;">'+(s.c||'')+(s.co?', '+s.co:'')+'</div>';
+  document.getElementById('add-addr-box').style.display='block';
+  document.getElementById('add-step2-label').style.display='block';
+  document.getElementById('add-desc').style.display='block';
+  document.getElementById('add-desc').value=s.n||'';
+  document.getElementById('add-save-btn').style.display='block';
+  document.getElementById('add-save-btn').textContent='💾 Update Spot';
+  document.getElementById('add-save-btn').dataset.editId=id;
+  document.getElementById('add-save-btn').onclick=function(){saveEditSpot(id);};
+  // Pre-fill addPnd so location is preserved
+  addPnd={lat:s.lat,lng:s.lng,addr:s.a,c:s.c||'',co:s.co||'',cc:s.cc||'',
+    state:s.state||'',city:s.city||'',suburb:s.suburb||''};
 }
 function cancelEdit(){
   eid=null;
-  ["fa","fc","fco","fn"].forEach(i=>document.getElementById(i).value="");
-  document.getElementById("ftitle").textContent="➕ Manually add a PFA spot";
-  document.getElementById("fcanc").style.display="none";
-  document.getElementById("fsave").textContent="📍 Save Spot";
+        document.getElementById("fsave").textContent="📍 Save Spot";
   gs("","");
 }
 function gs(m,c){const el=document.getElementById("gstatus");el.textContent=m;el.className=c;}
@@ -898,8 +1055,7 @@ async function save(){
       spots.push(s);putMk(s);
       map.flyTo([lat,lng],17,{duration:1.1});
       setTimeout(()=>mks[s.id]?.openPopup(),1200);
-      ["fa","fc","fco","fn"].forEach(i=>document.getElementById(i).value="");
-      setTimeout(()=>gs("",""),3000);
+            setTimeout(()=>gs("",""),3000);
       toast("📍 PFA spot added!");
     }
     buildTree();render();
@@ -911,5 +1067,28 @@ spots.forEach(putMk);
 buildTree();
 render();
 </script>
+
+<div id="add-overlay">
+  <div id="add-overlay-hdr">
+    <span id="add-overlay-hdr-title">➕ Add Free Parking Spot</span>
+    <button onclick="closeAddPanel()" style="margin-left:auto;background:rgba(255,255,255,.2);border:none;color:white;border-radius:50%;width:26px;height:26px;font-size:15px;cursor:pointer;line-height:1;">✕</button>
+  </div>
+  <div id="add-overlay-body">
+    <div class="add-step-label">Step 1 — Enter the parking address:</div>
+    <div id="add-search-row">
+      <input id="add-input" placeholder="e.g. 8 Claremont St, South Yarra"
+        style="flex:1;padding:9px 12px;border:1.5px solid #1976d2;border-radius:8px;font-size:13px;outline:none;min-width:0;"
+        onkeydown="if(event.key==='Enter')searchAddSpot()"/>
+      <button onclick="searchAddSpot()"
+        style="padding:9px 14px;background:#1976d2;color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">Search</button>
+    </div>
+    <div id="add-status"></div>
+    <div id="add-addr-box"></div>
+    <div class="add-step-label" id="add-step2-label" style="display:none;">Step 2 — Describe the free parking:</div>
+    <textarea id="add-desc" rows="4" placeholder="e.g. Free after 6pm, 2hr limit daytime, no ticket needed"></textarea>
+    <button id="add-save-btn" onclick="saveAddSpot()">📍 Save Free Parking Spot</button>
+  </div>
+</div>
+
 </body>
 </html>
