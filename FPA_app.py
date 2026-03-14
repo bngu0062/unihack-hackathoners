@@ -15,8 +15,8 @@ app = Flask(__name__)
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
 if DATABASE_URL:
-    import psycopg2
-    import psycopg2.extras
+    import psycopg
+    import psycopg.rows
     USE_PG = True
 else:
     import sqlite3
@@ -43,7 +43,7 @@ NEED_REM = 3   # downvotes before a spot is auto-deleted
 # ── DB connection ──────────────────────────────────────────────────────────
 def get_db():
     if USE_PG:
-        return psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+        return psycopg.connect(DATABASE_URL, row_factory=psycopg.rows.dict_row)
     else:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
