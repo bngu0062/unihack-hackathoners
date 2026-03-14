@@ -156,8 +156,17 @@ body{margin:0;padding:0;font-family:sans-serif;}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const NEED_OK=1, NEED_REM=1;
-const FLAGS={AU:"🇦🇺",US:"🇺🇸",GB:"🇬🇧",JP:"🇯🇵",FR:"🇫🇷",DE:"🇩🇪",CA:"🇨🇦",NZ:"🇳🇿",SG:"🇸🇬",IT:"🇮🇹",ES:"🇪🇸",CN:"🇨🇳",KR:"🇰🇷",IN:"🇮🇳",BR:"🇧🇷",MX:"🇲🇽",ZA:"🇿🇦",AE:"🇦🇪",TH:"🇹🇭",ID:"🇮🇩"};
-const fl=cc=>FLAGS[(cc||"").toUpperCase()]||"🌍";
+function fl(cc){
+  var c=(cc||"").toLowerCase();
+  if(!c) return "";
+  var img=document.createElement("img");
+  img.src="https://flagcdn.com/16x12/"+c+".png";
+  img.width=16; img.height=12;
+  img.alt=c.toUpperCase();
+  img.style.cssText="vertical-align:middle;margin-right:3px;border-radius:1px";
+  img.onerror=function(){this.style.display="none";};
+  return img.outerHTML;
+}
 
 let uid=localStorage.getItem("uid")||("u"+Math.random().toString(36).slice(2,8));
 localStorage.setItem("uid",uid);
@@ -306,7 +315,7 @@ function updateCountryFilters(){
   countries.forEach(cc=>{
     const btn=document.createElement("button");
     btn.className="fbtn"+(countryFilt===cc?" on-grey":"");
-    btn.textContent=fl(cc)+" "+cc;
+    btn.innerHTML=fl(cc)+cc;
     btn.onclick=function(){setCountryFilter(cc,this);};
     row.appendChild(btn);
   });
