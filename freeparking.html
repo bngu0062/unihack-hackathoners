@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Free Parking</title>
+<title>PFA – Parking For All</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 body{margin:0;padding:0;font-family:sans-serif;}
@@ -12,6 +12,8 @@ body{margin:0;padding:0;font-family:sans-serif;}
 #sinput{flex:1;max-width:260px;padding:6px 12px;border-radius:20px;border:none;font-size:13px;outline:none;}
 #sbtn{padding:6px 14px;border-radius:20px;border:none;background:#2196f3;color:white;cursor:pointer;font-size:13px;font-weight:600;}
 #toggle-btn{padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:white;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;transition:background .2s;}
+#myloc-btn{padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:#43a047;color:white;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;transition:background .2s;}
+#myloc-btn:hover{background:#388e3c;}
 #toggle-btn:hover{background:rgba(255,255,255,.2);}
 
 /* Map expands when sidebar hidden */
@@ -92,14 +94,42 @@ body{margin:0;padding:0;font-family:sans-serif;}
   #locbtn{bottom:calc(55vh + 10px);}
   #locbtn.sidebar-hidden{bottom:24px;}
 }
+
+#tree{flex-shrink:0;max-height:200px;overflow-y:auto;border-bottom:2px solid #e0e0e0;}
+.troot{padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;background:#1976d2;color:white;border-bottom:1px solid #1565c0;}
+.troot:hover{background:#1565c0;}
+.troot .tbg{margin-left:auto;background:rgba(255,255,255,.25);color:white;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;}
+.tsec-hdr{display:flex;align-items:center;gap:6px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;background:#f5f5f5;border-bottom:1px solid #eee;user-select:none;}
+.tsec-hdr:hover{background:#e3f2fd;}
+.tsec-body{display:none;background:white;}
+.tsec-body.open{display:block;}
+.tcar{font-size:9px;display:inline-block;transition:transform .18s;color:#999;}
+.tcar.open{transform:rotate(90deg);}
+.tbg{margin-left:auto;background:#e0e0e0;color:#555;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;}
+.tcc-row{display:flex;align-items:center;gap:4px;padding:5px 12px 5px 24px;cursor:pointer;font-size:12px;font-weight:600;border-bottom:1px solid #f5f5f5;user-select:none;}
+.tcc-row:hover{background:#e8f5e9;}
+.tst-list{display:none;}.tst-list.open{display:block;}
+.tst-row{display:flex;align-items:center;gap:4px;padding:4px 12px 4px 38px;cursor:pointer;font-size:11px;color:#555;border-left:3px solid transparent;user-select:none;}
+.tst-row:hover{background:#fce4ec;border-left-color:#f48fb1;}
+.tsub-list{display:none;}.tsub-list.open{display:block;}
+.tsub-row{display:flex;align-items:center;gap:4px;padding:4px 12px 4px 52px;cursor:pointer;font-size:11px;color:#444;user-select:none;border-left:3px solid transparent;}
+.tsub-row:hover{background:#fff8e1;border-left-color:#ffb300;}
+.tsub-row.tsub-open{background:#fff3e0;color:#e65100;font-weight:700;border-left-color:#ff8f00;}
+.tspot-list{display:none;}.tspot-list.open{display:block;}
+.tspot-row{padding:5px 12px 5px 66px;cursor:pointer;font-size:11px;color:#1565c0;border-left:3px solid #bbdefb;user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#f8fbff;}
+.tspot-row:hover{background:#e3f2fd;border-left-color:#1976d2;font-weight:700;color:#0d47a1;}
+
+
+.card-highlight{border-color:#1976d2 !important;background:#e3f2fd !important;box-shadow:0 0 0 3px rgba(33,150,243,.3);}
 </style>
 </head>
 <body>
 
 <div id="bar">
-  <h1>🅿️ Free Parking</h1>
+  <h1>🅿️ PFA <span style="font-size:10px;opacity:.6;font-weight:400">Parking For All</span></h1>
   <input id="sinput" placeholder="Search a location…"/>
   <button id="sbtn">🔍 Search</button>
+  <button id="myloc-btn" onclick="locateAndAdd()">📍 Add Current Location</button>
   <button id="toggle-btn" onclick="toggleSidebar()">☰ Hide</button>
 </div>
 
@@ -107,29 +137,40 @@ body{margin:0;padding:0;font-family:sans-serif;}
 
 <div id="side">
   <div id="side-head">
-    <h2>🌍 Free Parking Spots</h2>
+    <h2>🌍 PFA – Parking For All</h2>
     <span id="cnt">10 spots</span>
   </div>
 
-  <div id="fbar">
-    <div class="fbar-label">Status</div>
-    <div id="fbar-row1">
-      <button class="fbtn on" onclick="setStatusFilter('all',this)">🌍 All</button>
-      <button class="fbtn" onclick="setStatusFilter('confirmed',this)">✅ Confirmed</button>
-      <button class="fbtn" onclick="setStatusFilter('unconfirmed',this)">❓ Unconfirmed</button>
+  <div id="tree">
+    <div id="tsec-conf">
+      <div class="tsec-hdr" onclick="tToggle('conf')">
+        <span class="tcar" id="tc-conf">&#9658;</span>
+        <span>&#9989; Confirmed</span>
+        <span class="tbg" id="tb-conf">0</span>
+      </div>
+      <div class="tsec-body" id="tb-conf-body"></div>
     </div>
-    <div class="fbar-label" style="margin-top:4px">Country</div>
-    <div id="fbar-row2">
-      <button class="fbtn on-grey" onclick="setCountryFilter('all',this)">🌍 All Countries</button>
+    <div id="tsec-unconf">
+      <div class="tsec-hdr" onclick="tToggle('unconf')">
+        <span class="tcar" id="tc-unconf">&#9658;</span>
+        <span>&#10067; Unconfirmed</span>
+        <span class="tbg" id="tb-unconf">0</span>
+      </div>
+      <div class="tsec-body" id="tb-unconf-body"></div>
     </div>
   </div>
 
-  <div id="list"></div>
+  <div id="list-hint" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#bbb;font-size:13px;text-align:center;padding:20px;gap:8px;">
+    <div style="font-size:32px">🅿️</div>
+    <div><b style="color:#555">Browse spots above</b></div>
+    <div style="font-size:12px;color:#aaa">Click a spot name in the tree<br>to view its full details</div>
+  </div>
+  <div id="list" style="display:none"></div>
 
   <div id="quick-add">
-    <div id="qa-title">📍 Add free parking here?</div>
+    <div id="qa-title">📍 Add a PFA spot here?</div>
     <div id="qa-addr-display"></div>
-    <textarea id="qa-notes" placeholder="Describe the free parking… (e.g. Free 2hr Mon–Fri, unlimited Sundays)&#10;Press Enter to save instantly!"></textarea>
+    <textarea id="qa-notes" placeholder="Describe the free parking at this location… (e.g. Free 2hr Mon–Fri, unlimited Sundays)&#10;Press Enter to save instantly!"></textarea>
     <div id="qa-btns">
       <button id="qa-save" onclick="quickSave()">✅ Save This Spot</button>
       <button id="qa-cancel" onclick="closeQuickAdd()">✕ Cancel</button>
@@ -137,7 +178,7 @@ body{margin:0;padding:0;font-family:sans-serif;}
   </div>
 
   <div id="form">
-    <div id="ftitle">➕ Manually add a spot</div>
+    <div id="ftitle">➕ Manually add a PFA spot</div>
     <input id="fa" placeholder="Street address *"/>
     <input id="fc" placeholder="City / Suburb *"/>
     <input id="fco" placeholder="Country (e.g. Australia, USA) *"/>
@@ -171,22 +212,111 @@ function fl(cc){
 let uid=localStorage.getItem("uid")||("u"+Math.random().toString(36).slice(2,8));
 localStorage.setItem("uid",uid);
 
-let statusFilt="all", countryFilt="all", sidebarVisible=true;
+var sidebarVisible=true;
 
 let spots=[
-  {id:1,lat:-37.8136,lng:144.9631,a:"27 Swanston St",c:"Melbourne CBD",co:"Australia",cc:"AU",n:"Free after 7pm, 2hr limit daytime",up:0,dn:0,uv:[],dv:[]},
-  {id:2,lat:-33.8708,lng:151.2073,a:"483 George St",c:"Sydney CBD",co:"Australia",cc:"AU",n:"Free evenings after 6pm",up:0,dn:0,uv:[],dv:[]},
-  {id:3,lat:40.7128,lng:-74.006,a:"195 Fulton St",c:"Lower Manhattan",co:"USA",cc:"US",n:"Free Sundays all day",up:0,dn:0,uv:[],dv:[]},
-  {id:4,lat:34.0522,lng:-118.2437,a:"350 Spring St",c:"Downtown LA",co:"USA",cc:"US",n:"Free after 8pm weekdays",up:0,dn:0,uv:[],dv:[]},
-  {id:5,lat:51.5074,lng:-0.1278,a:"Victoria Embankment",c:"Westminster",co:"United Kingdom",cc:"GB",n:"Free evenings and Sundays",up:0,dn:0,uv:[],dv:[]},
-  {id:6,lat:48.8566,lng:2.3522,a:"12 Boulevard de Sebastopol",c:"Paris 1er",co:"France",cc:"FR",n:"Free Sunday mornings",up:0,dn:0,uv:[],dv:[]},
-  {id:7,lat:35.6762,lng:139.6503,a:"3 Shinjuku-dori Ave",c:"Shinjuku",co:"Japan",cc:"JP",n:"Free 8pm-8am daily",up:0,dn:0,uv:[],dv:[]},
-  {id:8,lat:1.3521,lng:103.8198,a:"30 Bras Basah Rd",c:"City Hall",co:"Singapore",cc:"SG",n:"Free on Sundays",up:0,dn:0,uv:[],dv:[]},
-  {id:9,lat:43.6532,lng:-79.3832,a:"100 Bay St",c:"Downtown Toronto",co:"Canada",cc:"CA",n:"Free weekends all day",up:0,dn:0,uv:[],dv:[]},
-  {id:10,lat:-36.8485,lng:174.7633,a:"15 Queen St",c:"Auckland CBD",co:"New Zealand",cc:"NZ",n:"Free after 6pm weekdays",up:0,dn:0,uv:[],dv:[]},
+  {id:1,lat:-37.8136,lng:144.9631,a:"27 Swanston St",c:"Melbourne CBD, Victoria",co:"Australia",cc:"AU",state:"Victoria",city:"Melbourne",suburb:"Melbourne CBD",n:"Free after 7pm, 2hr limit daytime",up:0,dn:0,uv:[],dv:[]},
+  {id:2,lat:-33.8708,lng:151.2073,a:"483 George St",c:"Sydney CBD, New South Wales",co:"Australia",cc:"AU",state:"New South Wales",city:"Sydney",suburb:"Sydney CBD",n:"Free evenings after 6pm",up:0,dn:0,uv:[],dv:[]},
+  {id:3,lat:40.7128,lng:-74.006,a:"195 Fulton St",c:"Lower Manhattan, New York",co:"USA",cc:"US",state:"New York",city:"New York City",suburb:"Lower Manhattan",n:"Free Sundays all day",up:0,dn:0,uv:[],dv:[]},
+  {id:4,lat:34.0522,lng:-118.2437,a:"350 Spring St",c:"Downtown LA, California",co:"USA",cc:"US",state:"California",city:"Los Angeles",suburb:"Downtown LA",n:"Free after 8pm weekdays",up:0,dn:0,uv:[],dv:[]},
+  {id:5,lat:51.5074,lng:-0.1278,a:"Victoria Embankment",c:"Westminster, England",co:"United Kingdom",cc:"GB",state:"England",city:"London",suburb:"Westminster",n:"Free evenings and Sundays",up:0,dn:0,uv:[],dv:[]},
+  {id:6,lat:48.8566,lng:2.3522,a:"12 Boulevard de Sebastopol",c:"Paris 1er, Île-de-France",co:"France",cc:"FR",state:"Île-de-France",city:"Paris",suburb:"Paris 1er",n:"Free Sunday mornings",up:0,dn:0,uv:[],dv:[]},
+  {id:7,lat:35.6762,lng:139.6503,a:"3 Shinjuku-dori Ave",c:"Shinjuku, Tokyo",co:"Japan",cc:"JP",state:"Tokyo",city:"Shinjuku",suburb:"Shinjuku",n:"Free 8pm-8am daily",up:0,dn:0,uv:[],dv:[]},
+  {id:8,lat:1.3521,lng:103.8198,a:"30 Bras Basah Rd",c:"City Hall, Central Region",co:"Singapore",cc:"SG",state:"Central Region",city:"Singapore",suburb:"City Hall",n:"Free on Sundays",up:0,dn:0,uv:[],dv:[]},
+  {id:9,lat:43.6532,lng:-79.3832,a:"100 Bay St",c:"Downtown Toronto, Ontario",co:"Canada",cc:"CA",state:"Ontario",city:"Toronto",suburb:"Downtown Toronto",n:"Free weekends all day",up:0,dn:0,uv:[],dv:[]},
+  {id:10,lat:-36.8485,lng:174.7633,a:"15 Queen St",c:"Auckland CBD, Auckland",co:"New Zealand",cc:"NZ",state:"Auckland",city:"Auckland",suburb:"Auckland CBD",n:"Free after 6pm weekdays",up:0,dn:0,uv:[],dv:[]},
 ];
 let nid=200, mks={}, eid=null, smk=null;
 let pending={lat:null,lng:null,fullAddr:"",c:"",co:"",cc:""};
+
+// ── ADD SPOT FROM CURRENT LOCATION ────────────────────────────────────────
+async function locateAndAdd(){
+  if(!navigator.geolocation){toast("Geolocation not supported.");return;}
+  toast("📍 Getting your exact location…");
+  document.getElementById("myloc-btn").textContent="⏳ Locating…";
+  document.getElementById("myloc-btn").disabled=true;
+
+  navigator.geolocation.getCurrentPosition(
+    async function(p){
+      document.getElementById("myloc-btn").textContent="📍 Add Current Location";
+      document.getElementById("myloc-btn").disabled=false;
+
+      const lat=p.coords.latitude, lng=p.coords.longitude;
+      const acc=Math.round(p.coords.accuracy);
+
+      // Drop pulsing blue dot
+      if(myLocMarker){map.removeLayer(myLocMarker);myLocMarker=null;}
+      if(myAccCircle){map.removeLayer(myAccCircle);myAccCircle=null;}
+      const myIcon=L.divIcon({
+        html:`<div style="width:18px;height:18px;border-radius:50%;background:#2196f3;border:3px solid white;box-shadow:0 0 0 rgba(33,150,243,.6);animation:pulse 1.8s infinite;"></div>`,
+        iconSize:[18,18],iconAnchor:[9,9],className:""
+      });
+      myAccCircle=L.circle([lat,lng],{radius:acc,color:"#2196f3",weight:1,fillColor:"#2196f3",fillOpacity:0.1}).addTo(map);
+      myLocMarker=L.marker([lat,lng],{icon:myIcon,zIndexOffset:1000}).addTo(map);
+      const zoom=acc<50?18:acc<200?16:14;
+      map.flyTo([lat,lng],zoom,{duration:1.2});
+
+      // Reverse geocode to get address from coordinates
+      toast("🔍 Looking up your address…");
+      try{
+        const r=await fetch(
+          "https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat="+lat+"&lon="+lng,
+          {headers:{"Accept-Language":"en"}}
+        );
+        const d=await r.json();
+        const addr=d.address||{};
+        const num   =addr.house_number||"";
+        const road  =addr.road||addr.pedestrian||addr.path||addr.street||"";
+        const suburb=addr.suburb||addr.neighbourhood||addr.quarter||"";
+        const city  =addr.city||addr.town||addr.village||addr.county||suburb||"";
+        const state =addr.state||addr.region||"";
+        const country=addr.country||"";
+        const cc    =(addr.country_code||"").toUpperCase();
+        const postcode=addr.postcode||"";
+        const streetLine=[num,road].filter(Boolean).join(" ")||("Near "+lat.toFixed(4)+", "+lng.toFixed(4));
+        const cityLine=[suburb,city,state,postcode].filter(Boolean).join(", ");
+
+        pending={lat,lng,fullAddr:streetLine,
+          c:cityLine||city,
+          co:country,cc,
+          state:state||"",
+          city:city||suburb||"",
+          suburb:suburb||city||""};
+
+        // Show quick-add panel pre-filled
+        document.getElementById("qa-addr-display").innerHTML=
+          `<div style="font-size:13px;font-weight:700;color:#1a1a1a">${fl(cc)} ${streetLine}</div>`+
+          `<div style="font-size:11px;color:#666;margin-top:2px">${cityLine}${country?", "+country:""}</div>`+
+          `<div style="font-size:10px;color:#2196f3;margin-top:3px">📍 From your GPS · Accuracy: ±${acc}m</div>`;
+        document.getElementById("qa-notes").value="";
+        document.getElementById("quick-add").style.display="block";
+        document.getElementById("qa-title").textContent="📍 Add PFA spot at your location?";
+        if(!sidebarVisible) toggleSidebar();
+        setTimeout(()=>document.getElementById("qa-notes").focus(),400);
+        toast("✅ Located! ±"+acc+"m — add parking details below.");
+      } catch(e){
+        // Fallback: no address found, use coordinates
+        pending={lat,lng,fullAddr:"Near "+lat.toFixed(5)+", "+lng.toFixed(5),c:"",co:"",cc:""};
+        document.getElementById("qa-addr-display").innerHTML=
+          `<div style="font-size:13px;font-weight:700;color:#1a1a1a">📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}</div>`+
+          `<div style="font-size:10px;color:#2196f3;margin-top:3px">From your GPS · Accuracy: ±${acc}m</div>`;
+        document.getElementById("qa-notes").value="";
+        document.getElementById("quick-add").style.display="block";
+        document.getElementById("qa-title").textContent="📍 Add PFA spot at your location?";
+        if(!sidebarVisible) toggleSidebar();
+        setTimeout(()=>document.getElementById("qa-notes").focus(),400);
+        toast("✅ Located! Add parking details below.");
+      }
+    },
+    function(err){
+      document.getElementById("myloc-btn").textContent="📍 Add Current Location";
+      document.getElementById("myloc-btn").disabled=false;
+      const msgs={1:"Location access denied. Allow location in browser settings.",2:"Location unavailable.",3:"Timed out."};
+      toast("❌ "+(msgs[err.code]||"Could not get location."));
+    },
+    {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+  );
+}
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const map=L.map("map").setView([20,10],2);
@@ -223,12 +353,66 @@ function toggleSidebar(){
   setTimeout(()=>map.invalidateSize(),320);
 }
 
+// My location marker + accuracy circle
+let myLocMarker=null, myAccCircle=null;
+
 function locate(){
   if(!navigator.geolocation){toast("Geolocation not supported.");return;}
-  toast("📍 Getting location…");
+  toast("📍 Getting your exact location…");
   navigator.geolocation.getCurrentPosition(
-    p=>{map.flyTo([p.coords.latitude,p.coords.longitude],15,{duration:1.2});toast("✅ Found your location!");},
-    ()=>toast("❌ Could not get location.")
+    function(p){
+      const lat=p.coords.latitude, lng=p.coords.longitude;
+      const acc=Math.round(p.coords.accuracy);
+
+      // Remove old markers
+      if(myLocMarker){map.removeLayer(myLocMarker);myLocMarker=null;}
+      if(myAccCircle){map.removeLayer(myAccCircle);myAccCircle=null;}
+
+      // Blue pulsing dot icon
+      const myIcon=L.divIcon({
+        html:`<div style="
+          width:18px;height:18px;border-radius:50%;
+          background:#2196f3;border:3px solid white;
+          box-shadow:0 0 0 rgba(33,150,243,.6);
+          animation:pulse 1.8s infinite;
+        "></div>
+        <style>
+          @keyframes pulse{
+            0%{box-shadow:0 0 0 0 rgba(33,150,243,.6);}
+            70%{box-shadow:0 0 0 14px rgba(33,150,243,0);}
+            100%{box-shadow:0 0 0 0 rgba(33,150,243,0);}
+          }
+        </style>`,
+        iconSize:[18,18],iconAnchor:[9,9],popupAnchor:[0,-12],className:""
+      });
+
+      // Accuracy circle (light blue fill)
+      myAccCircle=L.circle([lat,lng],{
+        radius:acc,
+        color:"#2196f3",weight:1,
+        fillColor:"#2196f3",fillOpacity:0.1
+      }).addTo(map);
+
+      // Marker with popup
+      myLocMarker=L.marker([lat,lng],{icon:myIcon,zIndexOffset:1000})
+        .addTo(map)
+        .bindPopup(
+          "<b>📍 You are here</b><br>"+
+          "<small>"+lat.toFixed(6)+", "+lng.toFixed(6)+"</small><br>"+
+          "<small style='color:#888'>Accuracy: ±"+acc+"m</small>"
+        )
+        .openPopup();
+
+      // Fly to location — zoom 18 if accurate (<50m), else 16
+      const zoom=acc<50?18:acc<200?16:14;
+      map.flyTo([lat,lng],zoom,{duration:1.4});
+      toast("✅ Located! Accuracy: ±"+acc+"m");
+    },
+    function(err){
+      const msgs={1:"Location access denied. Please allow location in browser settings.",2:"Location unavailable.",3:"Location request timed out."};
+      toast("❌ "+(msgs[err.code]||"Could not get location."));
+    },
+    {enableHighAccuracy:true, timeout:15000, maximumAge:0}
   );
 }
 
@@ -266,7 +450,7 @@ async function doSearch(){
     // make sure sidebar is visible so they can see the quick-add panel
     if(!sidebarVisible) toggleSidebar();
     setTimeout(()=>document.getElementById("qa-notes").focus(),400);
-    toast("📍 Found! Add parking details and hit Save.");
+    toast("📍 Found! Add parking details and hit Save to submit to PFA!");
   }catch(e){toast("❌ Search error. Check connection.");}
 }
 document.getElementById("sbtn").onclick=doSearch;
@@ -283,49 +467,276 @@ function quickSave(){
     setTimeout(()=>document.getElementById("qa-notes").style.borderColor="#ccc",2000);
     return;
   }
-  const s={id:nid++,lat:pending.lat,lng:pending.lng,a:pending.fullAddr,c:pending.c,co:pending.co,cc:pending.cc,n:notes,up:0,dn:0,uv:[],dv:[]};
+  const s={id:nid++,lat:pending.lat,lng:pending.lng,
+    a:pending.fullAddr,c:pending.c,co:pending.co,cc:pending.cc,
+    state:pending.state||"",city:pending.city||"",suburb:pending.suburb||"",
+    n:notes,up:0,dn:0,uv:[],dv:[]};
   spots.push(s);putMk(s);
   if(smk){map.removeLayer(smk);smk=null;}
   setTimeout(()=>mks[s.id]?.openPopup(),400);
-  closeQuickAdd();updateCountryFilters();render();
-  toast("✅ Parking spot saved!");
+  closeQuickAdd();buildTree();render();
+  toast("✅ PFA spot saved!");
 }
 function closeQuickAdd(){
   document.getElementById("quick-add").style.display="none";
   document.getElementById("qa-notes").value="";
+  document.getElementById("qa-title").textContent="📍 Add a PFA spot here?";
   pending={lat:null,lng:null,fullAddr:"",c:"",co:"",cc:""};
   if(smk){map.removeLayer(smk);smk=null;}
 }
 
 // ── FILTERS ────────────────────────────────────────────────────────────────
-function setStatusFilter(f,btn){
-  statusFilt=f;
-  document.querySelectorAll("#fbar-row1 .fbtn").forEach(b=>b.classList.remove("on"));
-  btn.classList.add("on");render();
+var tFilt="all", tCC=null, tSt=null, tSub=null, tSelectedId=null;
+var tSecOpen={conf:false,unconf:false};
+var tCCOpen={};
+var tStOpen={};
+var tCityOpen={};
+var tSubOpen={};
+
+function tToggle(sec){
+  var was=tSecOpen[sec];
+  tSecOpen.conf=false;tSecOpen.unconf=false;
+  tCCOpen={};tStOpen={};tCC=null;tSt=null;tSub=null;
+  if(!was){tSecOpen[sec]=true;tFilt=sec==="conf"?"confirmed":"unconfirmed";}
+  else{tFilt="all";}
+  tSelectedId=null;buildTree();render();
 }
-function setCountryFilter(cc,btn){
-  countryFilt=cc;
-  document.querySelectorAll("#fbar-row2 .fbtn").forEach(b=>b.classList.remove("on-grey"));
-  btn.classList.add("on-grey");render();
+
+function tPickCC(sec,cc,e){
+  if(e)e.stopPropagation();
+  var key=sec+"|"+cc;
+  var was=!!tCCOpen[key];
+  // close all cc under this sec
+  Object.keys(tCCOpen).forEach(function(k){if(k.indexOf(sec+"|")===0)delete tCCOpen[k];});
+  Object.keys(tStOpen).forEach(function(k){if(k.indexOf(sec+"|"+cc+"|")===0)delete tStOpen[k];});
+  tFilt=sec==="conf"?"confirmed":"unconfirmed";
+  if(!was){tCCOpen[key]=true;tCC=cc;tSt=null;tSub=null;}
+  else{tCC=null;tSt=null;tSub=null;}
+  tSelectedId=null;buildTree();render();
 }
-function updateCountryFilters(){
-  const row=document.getElementById("fbar-row2");
-  const countries=[...new Set(spots.map(s=>s.cc).filter(Boolean))].sort();
-  row.innerHTML=`<button class="fbtn${countryFilt==="all"?" on-grey":""}" onclick="setCountryFilter('all',this)">🌍 All Countries</button>`;
-  countries.forEach(cc=>{
-    const btn=document.createElement("button");
-    btn.className="fbtn"+(countryFilt===cc?" on-grey":"");
-    btn.innerHTML=fl(cc)+cc;
-    btn.onclick=function(){setCountryFilter(cc,this);};
-    row.appendChild(btn);
+
+function tPickSt(sec,cc,st,e){
+  if(e)e.stopPropagation();
+  var key=sec+"|"+cc+"|"+st;
+  var was=!!tStOpen[key];
+  Object.keys(tStOpen).forEach(function(k){if(k.indexOf(sec+"|"+cc+"|")===0)delete tStOpen[k];});
+  tFilt=sec==="conf"?"confirmed":"unconfirmed";
+  tCC=cc;
+  if(!was){tStOpen[key]=true;tSt=st;tSub=null;}
+  else{tSt=null;tSub=null;}
+  tSelectedId=null;buildTree();render();
+}
+
+function tPickSub(sec,cc,st,sub,e){
+  if(e)e.stopPropagation();
+  tFilt=sec==="conf"?"confirmed":"unconfirmed";
+  tCC=cc;tSt=st;
+  tSub=(tSub===sub?null:sub);
+  tSelectedId=null;buildTree();render();
+}
+
+function tPickCity(sec,cc,st,ct,e){
+  if(e)e.stopPropagation();
+  var key=sec+"|"+cc+"|"+st+"|"+ct;
+  var was=!!tCityOpen[key];
+  // close all cities in this state
+  Object.keys(tCityOpen).forEach(function(k){if(k.indexOf(sec+"|"+cc+"|"+st+"|")===0)delete tCityOpen[k];});
+  Object.keys(tSubOpen).forEach(function(k){if(k.indexOf(sec+"|"+cc+"|"+st+"|"+ct+"|")===0)delete tSubOpen[k];});
+  if(!was) tCityOpen[key]=true;
+  tSelectedId=null;buildTree();render();
+}
+
+function tPickSub2(sec,cc,st,ct,sub,e){
+  if(e)e.stopPropagation();
+  var key=sec+"|"+cc+"|"+st+"|"+ct+"|"+sub;
+  var was=!!tSubOpen[key];
+  Object.keys(tSubOpen).forEach(function(k){if(k.indexOf(sec+"|"+cc+"|"+st+"|"+ct+"|")===0)delete tSubOpen[k];});
+  if(!was) tSubOpen[key]=true;
+  tSelectedId=null;buildTree();render();
+}
+
+function tGoSpot(id,e){
+  if(e)e.stopPropagation();
+  var s=spots.find(function(x){return x.id===id;});
+  if(!s)return;
+  // Toggle: clicking same spot again hides it
+  if(tSelectedId===id){
+    tSelectedId=null;
+    render();
+    return;
+  }
+  tSelectedId=id;
+  // Re-render list to show only this spot
+  render();
+  // Fly map to exact spot
+  map.flyTo([s.lat,s.lng],18,{duration:1.1});
+  if(mks[s.id])mks[s.id].openPopup();
+  // Highlight the card after render
+  setTimeout(function(){
+    var card=document.getElementById("c"+id);
+    if(card){
+      card.scrollIntoView({behavior:"smooth",block:"center"});
+      card.classList.add("card-highlight");
+      setTimeout(function(){card.classList.remove("card-highlight");},2500);
+    }
+  },50);
+  toast("📍 "+s.a);
+}
+
+function getParts(s){
+  // Use dedicated fields if available (set during geocode)
+  var country = s.co||"";
+  var state   = s.state||"";
+  var city    = s.city||"";
+  var suburb  = s.suburb||s.c||"";
+  // Fallback: parse from s.c if structured fields missing
+  if(!state){
+    var parts=(s.c||"").split(",").map(function(x){return x.trim();}).filter(function(x){return x&&!/^\d+$/.test(x);});
+    suburb=parts[0]||"—";
+    state=parts.length>1?parts[parts.length-1]:suburb;
+    city=parts.length>1?parts[0]:suburb;
+  }
+  return{country:country, state:state, city:city, suburb:suburb};
+}
+
+function buildSecBody(sec,list){
+  var body=document.getElementById("tb-"+sec+"-body");
+  body.innerHTML="";
+  // Group: country -> state -> city -> suburb -> spots
+  var byCC={};
+  list.forEach(function(s){
+    var cc=s.cc||"?";
+    if(!byCC[cc])byCC[cc]=[];
+    byCC[cc].push(s);
+  });
+  Object.keys(byCC).sort().forEach(function(cc){
+    var ccs=byCC[cc];
+    var ckey=sec+"|"+cc;
+    var ccIsOpen=!!tCCOpen[ckey];
+    // ── Country row ──
+    var ccRow=document.createElement("div");
+    ccRow.className="tcc-row";
+    var car=document.createElement("span");car.className="tcar"+(ccIsOpen?" open":"");car.innerHTML="&#9658;";
+    ccRow.appendChild(car);
+    var fg=document.createElement("span");fg.innerHTML=fl(cc);ccRow.appendChild(fg);
+    var nm=document.createElement("span");nm.textContent=cc;ccRow.appendChild(nm);
+    var bg=document.createElement("span");bg.className="tbg";bg.textContent=ccs.length;ccRow.appendChild(bg);
+    ccRow.onclick=function(e){tPickCC(sec,cc,e);};
+    body.appendChild(ccRow);
+    var stList=document.createElement("div");
+    stList.className="tst-list"+(ccIsOpen?" open":"");
+    // ── Group by State ──
+    var byState={};
+    ccs.forEach(function(s){
+      var p=getParts(s);
+      var st=p.state||"Unknown";
+      if(!byState[st])byState[st]=[];
+      byState[st].push(s);
+    });
+    Object.keys(byState).sort().forEach(function(st){
+      var sts=byState[st];
+      var stkey=sec+"|"+cc+"|"+st;
+      var stIsOpen=!!tStOpen[stkey];
+      // ── State row ──
+      var stRow=document.createElement("div");
+      stRow.className="tst-row";
+      var sc=document.createElement("span");sc.className="tcar"+(stIsOpen?" open":"");sc.innerHTML="&#9658;";
+      stRow.appendChild(sc);
+      var sn=document.createElement("span");sn.textContent=st;stRow.appendChild(sn);
+      var sb=document.createElement("span");sb.className="tbg";sb.textContent=sts.length;stRow.appendChild(sb);
+      stRow.onclick=function(e){tPickSt(sec,cc,st,e);};
+      stList.appendChild(stRow);
+      var cityListEl=document.createElement("div");
+      cityListEl.className="tsub-list"+(stIsOpen?" open":"");
+      // ── Group by City ──
+      var byCity={};
+      sts.forEach(function(s){
+        var p=getParts(s);
+        var ct=p.city||p.suburb||"Unknown";
+        if(!byCity[ct])byCity[ct]=[];
+        byCity[ct].push(s);
+      });
+      Object.keys(byCity).sort().forEach(function(ct){
+        var cts=byCity[ct];
+        var ctkey=sec+"|"+cc+"|"+st+"|"+ct;
+        var ctIsOpen=!!tCityOpen[ctkey];
+        // ── City row ──
+        var ctRow=document.createElement("div");
+        ctRow.className="tsub-row"+(ctIsOpen?" tsub-open":"");
+        var ctc=document.createElement("span");ctc.className="tcar"+(ctIsOpen?" open":"");ctc.innerHTML="&#9658;";
+        ctRow.appendChild(ctc);
+        var ctn=document.createElement("span");ctn.textContent=ct;ctRow.appendChild(ctn);
+        var ctb=document.createElement("span");ctb.className="tbg";ctb.textContent=cts.length;ctRow.appendChild(ctb);
+        ctRow.onclick=function(e){tPickCity(sec,cc,st,ct,e);};
+        cityListEl.appendChild(ctRow);
+        var suburbListEl=document.createElement("div");
+        suburbListEl.className="tspot-list"+(ctIsOpen?" open":"");
+        // ── Group by Suburb ──
+        var bySuburb={};
+        cts.forEach(function(s){
+          var p=getParts(s);
+          var sb2=p.suburb||ct;
+          if(!bySuburb[sb2])bySuburb[sb2]=[];
+          bySuburb[sb2].push(s);
+        });
+        Object.keys(bySuburb).sort().forEach(function(sub){
+          var subs=bySuburb[sub];
+          var subkey=sec+"|"+cc+"|"+st+"|"+ct+"|"+sub;
+          var subIsOpen=!!tSubOpen[subkey];
+          // ── Suburb row ──
+          var subRow=document.createElement("div");
+          subRow.className="tspot-row"+(subIsOpen?" tspot-open":"");
+          subRow.style.paddingLeft="76px";
+          var subc2=document.createElement("span");subc2.className="tcar"+(subIsOpen?" open":"");subc2.innerHTML="&#9658;";
+          subRow.appendChild(subc2);
+          var subn=document.createElement("span");subn.textContent=sub;subRow.appendChild(subn);
+          var subb=document.createElement("span");subb.className="tbg";subb.textContent=subs.length;subRow.appendChild(subb);
+          subRow.onclick=function(e){tPickSub2(sec,cc,st,ct,sub,e);};
+          suburbListEl.appendChild(subRow);
+          // ── Spot rows ──
+          var spotListEl=document.createElement("div");
+          spotListEl.className="tspot-list"+(subIsOpen?" open":"");
+          subs.forEach(function(s){
+            var spRow=document.createElement("div");
+            spRow.className="tspot-row";
+            spRow.style.paddingLeft="90px";
+            spRow.style.borderLeft="3px solid #bbdefb";
+            spRow.style.background="#f8fbff";
+            spRow.textContent="📍 "+s.a;
+            spRow.title=s.a+(s.n?" — "+s.n:"");
+            (function(sid){spRow.onclick=function(e){tGoSpot(sid,e);};})(s.id);
+            spotListEl.appendChild(spRow);
+          });
+          suburbListEl.appendChild(spotListEl);
+        });
+        cityListEl.appendChild(suburbListEl);
+      });
+      stList.appendChild(cityListEl);
+    });
+    body.appendChild(stList);
   });
 }
+
+function buildTree(){
+  var conf=spots.filter(function(s){return s.up>=NEED_OK;});
+  var unconf=spots.filter(function(s){return s.up<NEED_OK;});
+  document.getElementById("tb-conf").textContent=conf.length;
+  document.getElementById("tb-unconf").textContent=unconf.length;
+  ["conf","unconf"].forEach(function(sec){
+    var open=tSecOpen[sec];
+    document.getElementById("tb-"+sec+"-body").className="tsec-body"+(open?" open":"");
+    document.getElementById("tc-"+sec).className="tcar"+(open?" open":"");
+  });
+  buildSecBody("conf",conf);
+  buildSecBody("unconf",unconf);
+}
+
+function updateCountryFilters(){buildTree();}
+
 function visSpots(){
-  return spots.filter(s=>{
-    const sok=statusFilt==="all"?true:statusFilt==="confirmed"?s.up>=NEED_OK:s.up<NEED_OK;
-    const cok=countryFilt==="all"||s.cc===countryFilt;
-    return sok&&cok;
-  });
+  // Show nothing until a spot is explicitly clicked in the tree
+  if(tSelectedId===null) return [];
+  return spots.filter(function(s){return s.id===tSelectedId;});
 }
 
 // ── TRUST ──────────────────────────────────────────────────────────────────
@@ -359,9 +770,15 @@ function putMk(s){
 function render(){
   const el=document.getElementById("list");
   const shown=visSpots();
-  document.getElementById("cnt").textContent=spots.length+" spot"+(spots.length!==1?"s":"")+(shown.length!==spots.length?" ("+shown.length+" shown)":"");
+  // Show spot count always
+  document.getElementById("cnt").textContent=spots.length+" spot"+(spots.length!==1?"s":"");
+  // Hide list entirely when no spot selected from tree
+  el.style.display=tSelectedId!==null?"block":"none";
+  // Show/hide the divider hint
+  var hint=document.getElementById("list-hint");
+  if(hint) hint.style.display=tSelectedId===null?"flex":"none";
   el.innerHTML="";
-  if(!shown.length){el.innerHTML='<p style="text-align:center;color:#aaa;padding:20px;font-size:13px">No spots match this filter.</p>';return;}
+  if(!shown.length){el.innerHTML='<p style="text-align:center;color:#aaa;padding:20px;font-size:13px">No PFA spots match this filter.</p>';return;}
   [...shown].sort((a,b)=>(b.up-b.dn)-(a.up-a.dn)).forEach(s=>{
     const myUp=s.uv.includes(uid),myDn=s.dv.includes(uid),myV=myUp||myDn;
     const confirmed=s.up>=NEED_OK;
@@ -415,7 +832,7 @@ function del(id,e){
   if(!confirm("Delete this spot?"))return;
   map.removeLayer(mks[id]);delete mks[id];
   spots=spots.filter(s=>s.id!==id);
-  updateCountryFilters();render();toast("🗑️ Deleted.");
+  buildTree();render();toast("🗑️ Deleted.");
 }
 
 // ── EDIT — resets votes ────────────────────────────────────────────────────
@@ -436,7 +853,7 @@ function startEdit(id,e){
 function cancelEdit(){
   eid=null;
   ["fa","fc","fco","fn"].forEach(i=>document.getElementById(i).value="");
-  document.getElementById("ftitle").textContent="➕ Manually add a spot";
+  document.getElementById("ftitle").textContent="➕ Manually add a PFA spot";
   document.getElementById("fcanc").style.display="none";
   document.getElementById("fsave").textContent="📍 Save Spot";
   gs("","");
@@ -473,21 +890,25 @@ async function save(){
       putMk(s);map.flyTo([lat,lng],17,{duration:1.1});
       cancelEdit();toast("✏️ Updated! Votes have been reset.");
     } else {
-      const s={id:nid++,lat,lng,a:fullAddr,c,co,cc,n,up:0,dn:0,uv:[],dv:[]};
+      const s={id:nid++,lat,lng,a:fullAddr,c,co,cc,
+        state:addr.state||addr.region||"",
+        city:addr.city||addr.town||addr.village||addr.suburb||c||"",
+        suburb:addr.suburb||addr.neighbourhood||addr.quarter||c||"",
+        n,up:0,dn:0,uv:[],dv:[]};
       spots.push(s);putMk(s);
       map.flyTo([lat,lng],17,{duration:1.1});
       setTimeout(()=>mks[s.id]?.openPopup(),1200);
       ["fa","fc","fco","fn"].forEach(i=>document.getElementById(i).value="");
       setTimeout(()=>gs("",""),3000);
-      toast("📍 Spot added!");
+      toast("📍 PFA spot added!");
     }
-    updateCountryFilters();render();
+    buildTree();render();
   }catch(err){document.getElementById("fsave").disabled=false;gs("❌ Error. Check your connection.","gerr");}
 }
 
 // ── BOOT ───────────────────────────────────────────────────────────────────
 spots.forEach(putMk);
-updateCountryFilters();
+buildTree();
 render();
 </script>
 </body>
