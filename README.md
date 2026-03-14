@@ -1,1 +1,1 @@
-Free parking locator, community-contributed prototype for hackathon wasd
+Free parking locator, community-contributed prototype for hackathon
