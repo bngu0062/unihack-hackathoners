@@ -188,8 +188,8 @@ body{margin:0;padding:0;font-family:sans-serif;}
 //  PFA — all data now lives in SQLite via Flask API
 // ══════════════════════════════════════════════════════════════════════════
 
-const NEED_OK  = 1;   // confirmations needed
-const NEED_REM = 1;   // disputes before removal
+const NEED_OK  = 3;   // confirmations needed
+const NEED_REM = 3;   // disputes before removal
 
 // Per-browser anonymous UID stored in localStorage
 let uid = localStorage.getItem('uid') || ('u' + Math.random().toString(36).slice(2, 8));

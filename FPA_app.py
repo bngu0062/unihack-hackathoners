@@ -206,9 +206,9 @@ def vote_spot(spot_id):
         conn.execute('UPDATE spots SET dn=dn+1 WHERE id=?', (spot_id,))
     conn.commit()
 
-    # Check if spot should be auto-removed (NEED_REM=1)
+    # Check if spot should be auto-removed (NEED_REM=3)
     row = conn.execute('SELECT * FROM spots WHERE id=?', (spot_id,)).fetchone()
-    NEED_REM = 1
+    NEED_REM = 3
     if row['dn'] >= NEED_REM:
         conn.execute('DELETE FROM votes WHERE spot_id=?', (spot_id,))
         conn.execute('DELETE FROM spots WHERE id=?', (spot_id,))
