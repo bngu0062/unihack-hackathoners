@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Free Parking</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+body{margin:0;padding:0;font-family:sans-serif;}
+#bar{position:fixed;top:0;left:0;right:0;height:50px;background:#1a1a2e;display:flex;align-items:center;gap:10px;padding:0 15px;z-index:9999;color:white;}
+#bar h1{font-size:16px;margin:0;white-space:nowrap;}
+#sinput{flex:1;max-width:260px;padding:6px 12px;border-radius:20px;border:none;font-size:13px;outline:none;}
+#sbtn{padding:6px 14px;border-radius:20px;border:none;background:#2196f3;color:white;cursor:pointer;font-size:13px;font-weight:600;}
+#toggle-btn{padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:white;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;transition:background .2s;}
+#toggle-btn:hover{background:rgba(255,255,255,.2);}
+
+/* Map expands when sidebar hidden */
+#map{position:fixed;top:50px;left:0;height:calc(100vh - 50px);transition:width .3s;}
+#map.full{width:100%;}
+#map.split{width:calc(100% - 340px);}
+
+/* Sidebar slides in/out */
+#side{position:fixed;top:50px;right:0;width:340px;height:calc(100vh - 50px);background:white;border-left:1px solid #ccc;display:flex;flex-direction:column;overflow:hidden;transition:transform .3s;z-index:500;}
+#side.hidden{transform:translateX(340px);}
+
+#side-head{padding:10px 14px;background:#f5f5f5;border-bottom:1px solid #eee;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;}
+#side-head h2{margin:0;font-size:14px;}
+#cnt{color:#2196f3;font-size:12px;font-weight:700;}
+
+#fbar{display:flex;flex-wrap:wrap;gap:5px;padding:8px 10px;border-bottom:1px solid #eee;flex-shrink:0;background:#fafafa;}
+.fbar-label{font-size:10px;color:#aaa;width:100%;margin-bottom:2px;}
+#fbar-row1,#fbar-row2{display:flex;gap:5px;flex-wrap:wrap;}
+.fbtn{white-space:nowrap;font-size:11px;font-weight:600;border:1px solid #ddd;border-radius:14px;padding:4px 10px;background:white;cursor:pointer;transition:all .15s;}
+.fbtn:hover{border-color:#2196f3;color:#2196f3;}
+.fbtn.on{background:#2196f3;color:white;border-color:#2196f3;}
+.fbtn.on-grey{background:#757575;color:white;border-color:#757575;}
+
+#list{flex:1;overflow-y:auto;padding:8px;}
+
+#quick-add{display:none;padding:12px 14px;background:#fffde7;border-top:2px solid #fbc02d;flex-shrink:0;}
+#qa-title{font-size:13px;font-weight:700;color:#f57f17;margin-bottom:6px;}
+#qa-addr-display{font-size:12px;color:#333;background:#fff9c4;border:1px solid #f9a825;border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.5;}
+#qa-notes{width:100%;border:1px solid #ccc;border-radius:8px;padding:8px 10px;font-size:13px;height:64px;resize:none;outline:none;background:white;margin-bottom:8px;transition:border-color .2s;}
+#qa-notes:focus{border-color:#fbc02d;}
+#qa-btns{display:flex;gap:8px;}
+#qa-save{flex:1;background:#f9a825;color:white;border:none;border-radius:18px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;}
+#qa-save:hover{background:#f57f17;}
+#qa-cancel{background:#eee;color:#555;border:none;border-radius:18px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;}
+#qa-cancel:hover{background:#ddd;}
+
+#form{padding:12px 14px;background:#e3f2fd;border-top:2px solid #1976d2;flex-shrink:0;}
+#ftitle{font-size:13px;font-weight:700;color:#1565c0;margin-bottom:8px;}
+#form input,#form textarea{width:100%;border:1px solid #ccc;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:6px;outline:none;background:white;transition:border-color .2s;}
+#form input:focus,#form textarea:focus{border-color:#1976d2;}
+#form textarea{height:46px;resize:none;}
+#gstatus{font-size:11px;min-height:14px;margin-bottom:4px;}
+.gok{color:#2e7d32;}.gerr{color:#c62828;}.gld{color:#1565c0;}
+#fbrow{display:flex;gap:8px;}
+#fsave{flex:1;background:#1976d2;color:white;border:none;border-radius:18px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;}
+#fsave:hover{background:#1565c0;}
+#fsave:disabled{background:#90caf9;cursor:not-allowed;}
+#fcanc{flex:1;background:#eee;color:#333;border:none;border-radius:18px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;display:none;}
+#fcanc:hover{background:#ddd;}
+
+.card{border:1px solid #ddd;border-radius:10px;padding:10px;margin-bottom:8px;cursor:pointer;transition:border-color .2s;}
+.card:hover{border-color:#2196f3;}
+.card b{font-size:14px;display:block;margin-bottom:2px;}
+.card small{color:#888;display:block;margin-bottom:4px;}
+.card em{font-size:12px;color:#555;display:block;margin-bottom:8px;}
+.tbar{background:#eee;border-radius:4px;height:6px;margin-bottom:3px;}
+.tfill{height:100%;border-radius:4px;transition:width .4s;}
+.tmsg{font-size:10px;font-weight:600;margin-bottom:8px;}
+.vrow{display:flex;gap:6px;margin-bottom:6px;}
+.vbtn{flex:1;padding:7px;border-radius:18px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid;}
+.vyes{background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7;}
+.vno{background:#ffebee;color:#c62828;border-color:#ef9a9a;}
+.vbtn:disabled{opacity:.4;cursor:not-allowed;}
+.arow{display:flex;gap:6px;align-items:center;}
+.abtn{padding:4px 10px;border-radius:14px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;}
+.aedit{background:#fff3e0;color:#e65100;border-color:#ffcc80;}
+.adel{background:#fce4ec;color:#880e4f;border-color:#f48fb1;}
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:white;padding:9px 18px;border-radius:20px;font-size:13px;z-index:99999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90vw;text-align:center;}
+#toast.on{opacity:1;}
+#locbtn{position:fixed;bottom:24px;left:16px;z-index:9998;width:38px;height:38px;border-radius:50%;background:white;border:1px solid #ccc;font-size:18px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);}
+
+@media(max-width:660px){
+  #map.split{width:100%;height:45vh;top:50px;}
+  #map.full{width:100%;height:calc(100vh - 50px);}
+  #side{width:100%;height:55vh;top:auto;bottom:0;right:0;border-left:none;border-top:1px solid #ccc;}
+  #side.hidden{transform:translateY(55vh);}
+  #locbtn{bottom:calc(55vh + 10px);}
+  #locbtn.sidebar-hidden{bottom:24px;}
+}
+</style>
+</head>
+<body>
+
+<div id="bar">
+  <h1>🅿️ Free Parking</h1>
+  <input id="sinput" placeholder="Search a location…"/>
+  <button id="sbtn">🔍 Search</button>
+  <button id="toggle-btn" onclick="toggleSidebar()">☰ Hide</button>
+</div>
+
+<div id="map" class="split"></div>
+
+<div id="side">
+  <div id="side-head">
+    <h2>🌍 Free Parking Spots</h2>
+    <span id="cnt">10 spots</span>
+  </div>
+
+  <div id="fbar">
+    <div class="fbar-label">Status</div>
+    <div id="fbar-row1">
+      <button class="fbtn on" onclick="setStatusFilter('all',this)">🌍 All</button>
+      <button class="fbtn" onclick="setStatusFilter('confirmed',this)">✅ Confirmed</button>
+      <button class="fbtn" onclick="setStatusFilter('unconfirmed',this)">❓ Unconfirmed</button>
+    </div>
+    <div class="fbar-label" style="margin-top:4px">Country</div>
+    <div id="fbar-row2">
+      <button class="fbtn on-grey" onclick="setCountryFilter('all',this)">🌍 All Countries</button>
+    </div>
+  </div>
+
+  <div id="list"></div>
+
+  <div id="quick-add">
+    <div id="qa-title">📍 Add free parking here?</div>
+    <div id="qa-addr-display"></div>
+    <textarea id="qa-notes" placeholder="Describe the free parking… (e.g. Free 2hr Mon–Fri, unlimited Sundays)&#10;Press Enter to save instantly!"></textarea>
+    <div id="qa-btns">
+      <button id="qa-save" onclick="quickSave()">✅ Save This Spot</button>
+      <button id="qa-cancel" onclick="closeQuickAdd()">✕ Cancel</button>
+    </div>
+  </div>
+
+  <div id="form">
+    <div id="ftitle">➕ Manually add a spot</div>
+    <input id="fa" placeholder="Street address *"/>
+    <input id="fc" placeholder="City / Suburb *"/>
+    <input id="fco" placeholder="Country (e.g. Australia, USA) *"/>
+    <textarea id="fn" placeholder="Notes (e.g. Free 2hr, no limit after 6pm)"></textarea>
+    <div id="gstatus"></div>
+    <div id="fbrow">
+      <button id="fsave" onclick="save()">📍 Save Spot</button>
+      <button id="fcanc" onclick="cancelEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<button id="locbtn" onclick="locate()">📍</button>
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const NEED_OK=1, NEED_REM=1;
+const FLAGS={AU:"🇦🇺",US:"🇺🇸",GB:"🇬🇧",JP:"🇯🇵",FR:"🇫🇷",DE:"🇩🇪",CA:"🇨🇦",NZ:"🇳🇿",SG:"🇸🇬",IT:"🇮🇹",ES:"🇪🇸",CN:"🇨🇳",KR:"🇰🇷",IN:"🇮🇳",BR:"🇧🇷",MX:"🇲🇽",ZA:"🇿🇦",AE:"🇦🇪",TH:"🇹🇭",ID:"🇮🇩"};
+const fl=cc=>FLAGS[(cc||"").toUpperCase()]||"🌍";
+
+let uid=localStorage.getItem("uid")||("u"+Math.random().toString(36).slice(2,8));
+localStorage.setItem("uid",uid);
+
+let statusFilt="all", countryFilt="all", sidebarVisible=true;
+
+let spots=[
+  {id:1,lat:-37.8136,lng:144.9631,a:"27 Swanston St",c:"Melbourne CBD",co:"Australia",cc:"AU",n:"Free after 7pm, 2hr limit daytime",up:0,dn:0,uv:[],dv:[]},
+  {id:2,lat:-33.8708,lng:151.2073,a:"483 George St",c:"Sydney CBD",co:"Australia",cc:"AU",n:"Free evenings after 6pm",up:0,dn:0,uv:[],dv:[]},
+  {id:3,lat:40.7128,lng:-74.006,a:"195 Fulton St",c:"Lower Manhattan",co:"USA",cc:"US",n:"Free Sundays all day",up:0,dn:0,uv:[],dv:[]},
+  {id:4,lat:34.0522,lng:-118.2437,a:"350 Spring St",c:"Downtown LA",co:"USA",cc:"US",n:"Free after 8pm weekdays",up:0,dn:0,uv:[],dv:[]},
+  {id:5,lat:51.5074,lng:-0.1278,a:"Victoria Embankment",c:"Westminster",co:"United Kingdom",cc:"GB",n:"Free evenings and Sundays",up:0,dn:0,uv:[],dv:[]},
+  {id:6,lat:48.8566,lng:2.3522,a:"12 Boulevard de Sebastopol",c:"Paris 1er",co:"France",cc:"FR",n:"Free Sunday mornings",up:0,dn:0,uv:[],dv:[]},
+  {id:7,lat:35.6762,lng:139.6503,a:"3 Shinjuku-dori Ave",c:"Shinjuku",co:"Japan",cc:"JP",n:"Free 8pm-8am daily",up:0,dn:0,uv:[],dv:[]},
+  {id:8,lat:1.3521,lng:103.8198,a:"30 Bras Basah Rd",c:"City Hall",co:"Singapore",cc:"SG",n:"Free on Sundays",up:0,dn:0,uv:[],dv:[]},
+  {id:9,lat:43.6532,lng:-79.3832,a:"100 Bay St",c:"Downtown Toronto",co:"Canada",cc:"CA",n:"Free weekends all day",up:0,dn:0,uv:[],dv:[]},
+  {id:10,lat:-36.8485,lng:174.7633,a:"15 Queen St",c:"Auckland CBD",co:"New Zealand",cc:"NZ",n:"Free after 6pm weekdays",up:0,dn:0,uv:[],dv:[]},
+];
+let nid=200, mks={}, eid=null, smk=null;
+let pending={lat:null,lng:null,fullAddr:"",c:"",co:"",cc:""};
+
+// ── MAP ────────────────────────────────────────────────────────────────────
+const map=L.map("map").setView([20,10],2);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap",maxZoom:19}).addTo(map);
+
+const gi=L.divIcon({html:'<div style="background:#43a047;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>',iconSize:[14,14],iconAnchor:[7,7],popupAnchor:[0,-9],className:""});
+const oi=L.divIcon({html:'<div style="background:#fb8c00;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>',iconSize:[14,14],iconAnchor:[7,7],popupAnchor:[0,-9],className:""});
+const ri=L.divIcon({html:'<div style="background:#e53935;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>',iconSize:[14,14],iconAnchor:[7,7],popupAnchor:[0,-9],className:""});
+const pi=L.divIcon({html:'<div style="background:#8e24aa;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,.6)"></div>',iconSize:[18,18],iconAnchor:[9,9],popupAnchor:[0,-11],className:""});
+
+let tt;
+function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>el.classList.remove("on"),2700);}
+
+// ── TOGGLE SIDEBAR ─────────────────────────────────────────────────────────
+function toggleSidebar(){
+  sidebarVisible=!sidebarVisible;
+  const side=document.getElementById("side");
+  const mapEl=document.getElementById("map");
+  const btn=document.getElementById("toggle-btn");
+  const locbtn=document.getElementById("locbtn");
+  if(sidebarVisible){
+    side.classList.remove("hidden");
+    mapEl.classList.remove("full");
+    mapEl.classList.add("split");
+    btn.textContent="☰ Hide";
+    locbtn.classList.remove("sidebar-hidden");
+  } else {
+    side.classList.add("hidden");
+    mapEl.classList.remove("split");
+    mapEl.classList.add("full");
+    btn.textContent="☰ Show";
+    locbtn.classList.add("sidebar-hidden");
+  }
+  setTimeout(()=>map.invalidateSize(),320);
+}
+
+function locate(){
+  if(!navigator.geolocation){toast("Geolocation not supported.");return;}
+  toast("📍 Getting location…");
+  navigator.geolocation.getCurrentPosition(
+    p=>{map.flyTo([p.coords.latitude,p.coords.longitude],15,{duration:1.2});toast("✅ Found your location!");},
+    ()=>toast("❌ Could not get location.")
+  );
+}
+
+// ── SEARCH ─────────────────────────────────────────────────────────────────
+async function doSearch(){
+  const q=document.getElementById("sinput").value.trim();if(!q)return;
+  toast("🔍 Searching…");
+  try{
+    const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q="+encodeURIComponent(q),{headers:{"Accept-Language":"en"}});
+    const d=await r.json();
+    if(!d||!d.length){toast("❌ Not found. Try a more specific address.");return;}
+    const lat=parseFloat(d[0].lat),lng=parseFloat(d[0].lon);
+    const addr=d[0].address;
+    const num=addr.house_number||"";
+    const road=addr.road||addr.pedestrian||addr.path||addr.street||"";
+    const suburb=addr.suburb||addr.neighbourhood||addr.quarter||"";
+    const city=addr.city||addr.town||addr.village||addr.county||suburb||"";
+    const state=addr.state||addr.region||"";
+    const country=addr.country||"";
+    const cc=(addr.country_code||"").toUpperCase();
+    const postcode=addr.postcode||"";
+    const streetLine=[num,road].filter(Boolean).join(" ")||d[0].display_name.split(",")[0];
+    const cityLine=[suburb,city,state,postcode].filter(Boolean).join(", ");
+    pending={lat,lng,fullAddr:streetLine,c:cityLine||city,co:country,cc};
+    if(smk){map.removeLayer(smk);smk=null;}
+    smk=L.marker([lat,lng],{icon:pi}).addTo(map)
+      .bindPopup("<b>📍 "+streetLine+"</b><br><small>"+cityLine+", "+country+"</small>")
+      .openPopup();
+    map.flyTo([lat,lng],17,{duration:1.2});
+    document.getElementById("qa-addr-display").innerHTML=
+      `<div style="font-size:13px;font-weight:700;color:#1a1a1a">${fl(cc)} ${streetLine}</div>`+
+      `<div style="font-size:11px;color:#666;margin-top:2px">${cityLine}${country?", "+country:""}</div>`;
+    document.getElementById("qa-notes").value="";
+    document.getElementById("quick-add").style.display="block";
+    // make sure sidebar is visible so they can see the quick-add panel
+    if(!sidebarVisible) toggleSidebar();
+    setTimeout(()=>document.getElementById("qa-notes").focus(),400);
+    toast("📍 Found! Add parking details and hit Save.");
+  }catch(e){toast("❌ Search error. Check connection.");}
+}
+document.getElementById("sbtn").onclick=doSearch;
+document.getElementById("sinput").onkeydown=e=>{if(e.key==="Enter")doSearch();};
+document.getElementById("qa-notes").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();quickSave();}});
+
+// ── QUICK SAVE ─────────────────────────────────────────────────────────────
+function quickSave(){
+  if(!pending.lat){toast("Search a location first.");return;}
+  const notes=document.getElementById("qa-notes").value.trim();
+  if(!notes){
+    document.getElementById("qa-notes").style.borderColor="#e53935";
+    toast("⚠️ Please describe the free parking first.");
+    setTimeout(()=>document.getElementById("qa-notes").style.borderColor="#ccc",2000);
+    return;
+  }
+  const s={id:nid++,lat:pending.lat,lng:pending.lng,a:pending.fullAddr,c:pending.c,co:pending.co,cc:pending.cc,n:notes,up:0,dn:0,uv:[],dv:[]};
+  spots.push(s);putMk(s);
+  if(smk){map.removeLayer(smk);smk=null;}
+  setTimeout(()=>mks[s.id]?.openPopup(),400);
+  closeQuickAdd();updateCountryFilters();render();
+  toast("✅ Parking spot saved!");
+}
+function closeQuickAdd(){
+  document.getElementById("quick-add").style.display="none";
+  document.getElementById("qa-notes").value="";
+  pending={lat:null,lng:null,fullAddr:"",c:"",co:"",cc:""};
+  if(smk){map.removeLayer(smk);smk=null;}
+}
+
+// ── FILTERS ────────────────────────────────────────────────────────────────
+function setStatusFilter(f,btn){
+  statusFilt=f;
+  document.querySelectorAll("#fbar-row1 .fbtn").forEach(b=>b.classList.remove("on"));
+  btn.classList.add("on");render();
+}
+function setCountryFilter(cc,btn){
+  countryFilt=cc;
+  document.querySelectorAll("#fbar-row2 .fbtn").forEach(b=>b.classList.remove("on-grey"));
+  btn.classList.add("on-grey");render();
+}
+function updateCountryFilters(){
+  const row=document.getElementById("fbar-row2");
+  const countries=[...new Set(spots.map(s=>s.cc).filter(Boolean))].sort();
+  row.innerHTML=`<button class="fbtn${countryFilt==="all"?" on-grey":""}" onclick="setCountryFilter('all',this)">🌍 All Countries</button>`;
+  countries.forEach(cc=>{
+    const btn=document.createElement("button");
+    btn.className="fbtn"+(countryFilt===cc?" on-grey":"");
+    btn.textContent=fl(cc)+" "+cc;
+    btn.onclick=function(){setCountryFilter(cc,this);};
+    row.appendChild(btn);
+  });
+}
+function visSpots(){
+  return spots.filter(s=>{
+    const sok=statusFilt==="all"?true:statusFilt==="confirmed"?s.up>=NEED_OK:s.up<NEED_OK;
+    const cok=countryFilt==="all"||s.cc===countryFilt;
+    return sok&&cok;
+  });
+}
+
+// ── TRUST ──────────────────────────────────────────────────────────────────
+function ts(s){
+  if(s.dn>=NEED_REM)return"bad";
+  if(NEED_REM>1&&s.dn>=Math.ceil(NEED_REM*.6))return"warn";
+  if(s.up>=NEED_OK)return"ok";
+  return"neu";
+}
+function thtml(s){
+  const tot=Math.max(s.up+s.dn,1),pct=Math.round(s.up/tot*100),t=ts(s);
+  let col="#888",msg="";
+  if(t==="bad"){col="#e53935";msg="🚨 Removed on next not-free vote!";}
+  else if(t==="warn"){col="#fb8c00";msg="⚠️ "+(NEED_REM-s.dn)+" more removes this spot";}
+  else if(t==="ok"){col="#2e7d32";msg="✅ Confirmed free by community!";}
+  else msg="❓ Unconfirmed · "+s.up+"/"+NEED_OK+" confirmation needed";
+  return`<div class="tbar"><div class="tfill" style="width:${pct}%;background:${col}"></div></div><div class="tmsg" style="color:${col}">${msg}</div>`;
+}
+function ico(s){const t=ts(s);return t==="bad"?ri:t==="warn"?oi:gi;}
+function ppop(s){return`<b>${fl(s.cc)} ${s.a}</b><br><small>${s.c}, ${s.co}</small>${s.n?"<br><i>"+s.n+"</i>":""}<br><small>✅${s.up} ❌${s.dn}</small>`;}
+
+// ── MARKERS ────────────────────────────────────────────────────────────────
+function putMk(s){
+  if(mks[s.id])map.removeLayer(mks[s.id]);
+  const m=L.marker([s.lat,s.lng],{icon:ico(s)}).addTo(map).bindPopup(ppop(s));
+  m.on("click",()=>document.getElementById("c"+s.id)?.scrollIntoView({behavior:"smooth",block:"nearest"}));
+  mks[s.id]=m;
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+function render(){
+  const el=document.getElementById("list");
+  const shown=visSpots();
+  document.getElementById("cnt").textContent=spots.length+" spot"+(spots.length!==1?"s":"")+(shown.length!==spots.length?" ("+shown.length+" shown)":"");
+  el.innerHTML="";
+  if(!shown.length){el.innerHTML='<p style="text-align:center;color:#aaa;padding:20px;font-size:13px">No spots match this filter.</p>';return;}
+  [...shown].sort((a,b)=>(b.up-b.dn)-(a.up-a.dn)).forEach(s=>{
+    const myUp=s.uv.includes(uid),myDn=s.dv.includes(uid),myV=myUp||myDn;
+    const confirmed=s.up>=NEED_OK;
+    const d=document.createElement("div");
+    d.className="card";d.id="c"+s.id;
+    d.style.borderLeft=confirmed?"4px solid #43a047":"4px solid #bdbdbd";
+    d.innerHTML=`
+      <b>${fl(s.cc)} ${s.a}</b>
+      <small>${s.c}${s.co?", "+s.co:""} ${confirmed
+        ?'<span style="background:#e8f5e9;color:#2e7d32;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px">✅ Confirmed</span>'
+        :'<span style="background:#f5f5f5;color:#888;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px">❓ Unconfirmed</span>'}</small>
+      ${s.n?`<em>${s.n}</em>`:""}
+      ${thtml(s)}
+      <div style="font-size:11px;color:#777;margin-bottom:6px">✅ <b>${s.up}</b> confirmed &nbsp; ❌ <b>${s.dn}</b> disputed</div>
+      <div class="vrow">
+        <button class="vbtn vyes${myUp?" chosen":""}" ${myV?"disabled":""} onclick="vote(${s.id},1,event)">✅ Still free${myUp?" ✔":""}</button>
+        <button class="vbtn vno${myDn?" chosen":""}"  ${myV?"disabled":""} onclick="vote(${s.id},-1,event)">❌ Not free${myDn?" ✔":""}</button>
+      </div>
+      <div class="arow">
+        <button class="abtn aedit" onclick="startEdit(${s.id},event)">✏️ Edit</button>
+        <button class="abtn adel"  onclick="del(${s.id},event)">🗑️ Delete</button>
+        ${myV?'<span style="font-size:10px;color:#aaa;margin-left:auto">✔ Voted</span>':""}
+      </div>`;
+    d.onclick=e=>{if(e.target.tagName!=="BUTTON"){map.flyTo([s.lat,s.lng],17,{duration:1.1});mks[s.id]?.openPopup();}};
+    el.appendChild(d);
+  });
+}
+
+// ── VOTE ───────────────────────────────────────────────────────────────────
+function vote(id,v,e){
+  e.stopPropagation();
+  const s=spots.find(x=>x.id===id);if(!s)return;
+  if(s.uv.includes(uid)||s.dv.includes(uid)){toast("You already voted on this spot.");return;}
+  if(v===1){
+    s.up++;s.uv.push(uid);
+    toast(s.up>=NEED_OK?"✅ Confirmed free by community!":"👍 "+s.up+"/"+NEED_OK+" confirmations.");
+  } else {
+    s.dn++;s.dv.push(uid);
+    if(s.dn>=NEED_REM){
+      toast("🗑️ Removed — community said not free.");
+      map.removeLayer(mks[s.id]);delete mks[s.id];
+      spots=spots.filter(x=>x.id!==id);render();return;
+    }
+    toast("👎 Reported. "+(NEED_REM-s.dn)+" more removes it.");
+  }
+  putMk(s);mks[s.id]?.setPopupContent(ppop(s));render();
+}
+
+function del(id,e){
+  e.stopPropagation();
+  if(!confirm("Delete this spot?"))return;
+  map.removeLayer(mks[id]);delete mks[id];
+  spots=spots.filter(s=>s.id!==id);
+  updateCountryFilters();render();toast("🗑️ Deleted.");
+}
+
+// ── EDIT — resets votes ────────────────────────────────────────────────────
+function startEdit(id,e){
+  e.stopPropagation();
+  const s=spots.find(x=>x.id===id);if(!s)return;
+  eid=id;
+  document.getElementById("fa").value=s.a;
+  document.getElementById("fc").value=s.c;
+  document.getElementById("fco").value=s.co;
+  document.getElementById("fn").value=s.n||"";
+  document.getElementById("ftitle").textContent="✏️ Edit spot";
+  document.getElementById("fcanc").style.display="block";
+  document.getElementById("fsave").textContent="💾 Update";
+  gs("Editing — votes will reset on save.","gld");
+  document.getElementById("form").scrollIntoView({behavior:"smooth"});
+}
+function cancelEdit(){
+  eid=null;
+  ["fa","fc","fco","fn"].forEach(i=>document.getElementById(i).value="");
+  document.getElementById("ftitle").textContent="➕ Manually add a spot";
+  document.getElementById("fcanc").style.display="none";
+  document.getElementById("fsave").textContent="📍 Save Spot";
+  gs("","");
+}
+function gs(m,c){const el=document.getElementById("gstatus");el.textContent=m;el.className=c;}
+
+async function save(){
+  const a=document.getElementById("fa").value.trim();
+  const c=document.getElementById("fc").value.trim();
+  const co=document.getElementById("fco").value.trim();
+  const n=document.getElementById("fn").value.trim();
+  if(!a||!c||!co){alert("Fill in address, city and country.");return;}
+  gs("🔍 Looking up address…","gld");
+  document.getElementById("fsave").disabled=true;
+  try{
+    const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q="+encodeURIComponent([a,c,co].join(", ")),{headers:{"Accept-Language":"en"}});
+    const d=await r.json();
+    document.getElementById("fsave").disabled=false;
+    if(!d||!d.length){gs("❌ Not found. Try adding a street number.","gerr");return;}
+    const lat=parseFloat(d[0].lat),lng=parseFloat(d[0].lon);
+    const cc=(d[0].address?.country_code||"").toUpperCase();
+    const addr=d[0].address;
+    const num=addr.house_number||"";
+    const road=addr.road||addr.pedestrian||a;
+    const fullAddr=[num,road].filter(Boolean).join(" ")||a;
+    gs("✅ "+d[0].display_name.split(",").slice(0,3).join(","),"gok");
+    if(eid){
+      const s=spots.find(x=>x.id===eid);
+      if(s){
+        Object.assign(s,{a:fullAddr,c,co,cc,n,lat,lng});
+        // ── RESET VOTES ON EDIT ──
+        s.up=0; s.dn=0; s.uv=[]; s.dv=[];
+      }
+      putMk(s);map.flyTo([lat,lng],17,{duration:1.1});
+      cancelEdit();toast("✏️ Updated! Votes have been reset.");
+    } else {
+      const s={id:nid++,lat,lng,a:fullAddr,c,co,cc,n,up:0,dn:0,uv:[],dv:[]};
+      spots.push(s);putMk(s);
+      map.flyTo([lat,lng],17,{duration:1.1});
+      setTimeout(()=>mks[s.id]?.openPopup(),1200);
+      ["fa","fc","fco","fn"].forEach(i=>document.getElementById(i).value="");
+      setTimeout(()=>gs("",""),3000);
+      toast("📍 Spot added!");
+    }
+    updateCountryFilters();render();
+  }catch(err){document.getElementById("fsave").disabled=false;gs("❌ Error. Check your connection.","gerr");}
+}
+
+// ── BOOT ───────────────────────────────────────────────────────────────────
+spots.forEach(putMk);
+updateCountryFilters();
+render();
+</script>
+</body>
+</html>
