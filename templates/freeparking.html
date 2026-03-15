@@ -88,6 +88,15 @@ body{margin:0;padding:0;font-family:sans-serif;}
 #addspot-btn:hover,#addspot-btn.on{background:#0d47a1;}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:white;padding:9px 18px;border-radius:20px;font-size:13px;z-index:99999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90vw;text-align:center;}
 #toast.on{opacity:1;}
+#notify{position:fixed;top:58px;left:50%;transform:translateX(-50%) translateY(-12px);z-index:99998;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:92vw;min-width:220px;}
+#notify.on{opacity:1;transform:translateX(-50%) translateY(0);}
+#notify-inner{display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.18);border-left:4px solid transparent;}
+#notify-inner.success{background:#e8f5e9;color:#1b5e20;border-left-color:#43a047;}
+#notify-inner.error{background:#ffebee;color:#b71c1c;border-left-color:#e53935;}
+#notify-inner.info{background:#e3f2fd;color:#0d47a1;border-left-color:#2196f3;}
+#notify-inner.warning{background:#fff8e1;color:#e65100;border-left-color:#ffa000;}
+#notify-icon{font-size:18px;flex-shrink:0;}
+#notify-msg{flex:1;line-height:1.4;}
 #locbtn{position:fixed;bottom:24px;left:16px;z-index:9998;width:38px;height:38px;border-radius:50%;background:white;border:1px solid #ccc;font-size:18px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(33,150,243,.6);}70%{box-shadow:0 0 0 14px rgba(33,150,243,0);}100%{box-shadow:0 0 0 0 rgba(33,150,243,0);}}
 /* ── Tablet ── */
@@ -225,6 +234,7 @@ body{margin:0;padding:0;font-family:sans-serif;}
 
 <button id="locbtn" onclick="locate()">📍</button>
 <div id="toast"></div>
+<div id="notify"><div id="notify-inner"><span id="notify-icon"></span><span id="notify-msg"></span></div></div>
 <div id="sync-indicator"><div id="sync-ring"></div><div id="sync-dot"></div><span id="sync-label">Syncing…</span></div>
 
 <div id="add-overlay">
@@ -289,6 +299,23 @@ function toast(m){
   const el=document.getElementById('toast');
   el.textContent=m; el.classList.add('on');
   clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('on'),2700);
+}
+
+// Rich colour-coded notification banner (drops from top bar)
+let nt;
+function notify(msg, type='info', icon=''){
+  const wrap=document.getElementById('notify');
+  const inner=document.getElementById('notify-inner');
+  const iconEl=document.getElementById('notify-icon');
+  const msgEl=document.getElementById('notify-msg');
+  const icons={success:'✅',error:'❌',info:'ℹ️',warning:'⚠️'};
+  inner.className='';
+  inner.classList.add(type);
+  iconEl.textContent=icon||(icons[type]||'');
+  msgEl.innerHTML=msg;
+  wrap.classList.add('on');
+  clearTimeout(nt);
+  nt=setTimeout(()=>wrap.classList.remove('on'), 3200);
 }
 
 // ── Flag emoji helper ─────────────────────────────────────────────────────
@@ -485,7 +512,7 @@ function showExistingSpot(s){
   tGoSpot(s.id, null);
   map.flyTo([s.lat, s.lng], 18, {duration:1.2});
   if(mks[s.id]) mks[s.id].openPopup();
-  toast('📍 This spot already exists — shown below!');
+  notify('This location already has a spot — showing it below', 'info', '📍');
 }
 
 // ── Search ────────────────────────────────────────────────────────────────
@@ -555,7 +582,7 @@ async function quickSave(){
     buildTree();render();
     closeQuickAdd();
     setTimeout(()=>mks[s.id]?.openPopup(),400);
-    toast('✅ PFA spot saved!');
+    notify('Spot added — <b>'+pending.fullAddr+'</b>', 'success', '📍');
   }catch(e){
     let msg=e.message||'';
     try{const j=JSON.parse(msg);if(j.duplicate)msg='⚠️ A spot already exists at this location.';}catch(_){}
@@ -670,12 +697,12 @@ async function saveAddSpot(){
     spots.push(s);
     if(addMk){map.removeLayer(addMk);addMk=null;}
     putMk(s);buildTree();closeAddPanel();
-    toast('✅ PFA spot saved!');
+    notify('Spot added — <b>'+pending.fullAddr+'</b>', 'success', '📍');
   }catch(e){
     let msg=e.message||'';
     try{const j=JSON.parse(msg);if(j.duplicate){document.getElementById('add-status').textContent='⚠️ A spot already exists at this location.';toast('⚠️ A spot already exists at this location.');return;}}catch(_){}
     document.getElementById('add-status').textContent='❌ Failed to save.';
-    toast('❌ Failed to save spot.');
+    notify('Failed to save spot — please try again', 'error');
   }
 }
 
@@ -689,35 +716,35 @@ async function saveEditSpot(id){
     const idx=spots.findIndex(x=>x.id===id);
     if(idx>=0) spots[idx]=s;
     putMk(s);buildTree();render();closeAddPanel();
-    toast('✅ Spot updated!');
-  }catch(e){toast('❌ Failed to update spot.');}
+    notify('Spot description updated', 'success', '✏️');
+  }catch(e){notify('Failed to update spot — please try again', 'error');}
 }
 
 // ── Vote ──────────────────────────────────────────────────────────────────
 async function vote(id,v,e){
   e.stopPropagation();
   const s=spots.find(x=>x.id===id); if(!s)return;
-  if(s.my_vote!==0){toast('You already voted on this spot.');return;}
+  if(s.my_vote!==0){notify('You have already voted on this spot', 'warning', '⚠️');return;}
   try{
     const res=await apiFetch('/api/spots/'+id+'/vote',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({uid,vote:v})
     });
     if(res.removed){
-      toast('🗑️ Removed — community said not free.');
+      notify('Spot removed — community voted it not free', 'error', '🗑️');
       if(mks[id]){map.removeLayer(mks[id]);delete mks[id];}
       spots=spots.filter(x=>x.id!==id);
       buildTree();render();return;
     }
     const idx=spots.findIndex(x=>x.id===id);
     if(idx>=0) spots[idx]=res;
-    if(v===1) toast(res.up>=NEED_OK?'✅ Confirmed free by community!':'👍 '+res.up+'/'+NEED_OK+' confirmations.');
-    else toast('👎 Reported. '+(NEED_REM-res.dn)+' more removes it.');
+    if(v===1) notify(res.up>=NEED_OK?'Spot confirmed as free by the community!':'Vote recorded — <b>'+res.up+'/'+NEED_OK+'</b> confirmations so far', res.up>=NEED_OK?'success':'info', res.up>=NEED_OK?'✅':'👍');
+    else notify('Disputed — <b>'+(NEED_REM-res.dn)+'</b> more report'+(NEED_REM-res.dn===1?'':'s')+' will remove this spot', 'warning', '👎');
     putMk(res);
     if(mks[res.id]) mks[res.id].setPopupContent(ppop(res));
     render();
   }catch(err){
     const msg=err.message;
-    if(msg&&msg.includes('Already voted')) toast('You already voted on this spot.');
+    if(msg&&msg.includes('Already voted')) notify('You have already voted on this spot', 'warning', '⚠️');
     else toast('❌ Vote failed.');
   }
 }
@@ -739,7 +766,7 @@ async function del(id,e){
 async function requestDelete(id,e){
   e.stopPropagation();
   const s=spots.find(x=>x.id===id); if(!s)return;
-  if(s.my_delete_vote){toast('You already requested deletion of this spot.');return;}
+  if(s.my_delete_vote){notify('You have already requested deletion of this spot', 'warning', '⚠️');return;}
   const dvCount=(s.delete_votes||[]).length;
   const remaining=3-dvCount-1;
   if(!confirm(`Request deletion of this spot?\n\n${dvCount+1}/3 votes — ${remaining>0?remaining+' more vote'+(remaining!==1?'s':'')+' needed to delete.':'this will delete the spot immediately.'}`))return;
@@ -748,7 +775,7 @@ async function requestDelete(id,e){
       body:JSON.stringify({uid})
     });
     if(res.removed){
-      toast('🗑️ Spot deleted by community vote.');
+      notify('Spot deleted by community vote', 'error', '🗑️');
       if(mks[id]){map.removeLayer(mks[id]);delete mks[id];}
       spots=spots.filter(x=>x.id!==id);
       if(tSelectedId===id) tSelectedId=null;
@@ -757,12 +784,12 @@ async function requestDelete(id,e){
     const idx=spots.findIndex(x=>x.id===id);
     if(idx>=0) spots[idx]=res;
     const cnt=(res.delete_votes||[]).length;
-    toast('🗑️ Deletion requested. '+cnt+'/3 votes.');
+    notify('Deletion requested — <b>'+cnt+'/3</b> votes', 'warning', '🗑️');
     render();
   }catch(err){
     const msg=err.message||'';
-    if(msg.includes('Already voted')) toast('You already requested deletion of this spot.');
-    else toast('❌ Failed to submit deletion request.');
+    if(msg.includes('Already voted')) notify('You have already requested deletion of this spot', 'warning', '⚠️');
+    else notify('Failed to submit deletion request', 'error');
   }
 }
 
@@ -993,7 +1020,6 @@ function render(){
       })():''}
       ${!confirmed?`<div class="arow">
         <button class="abtn aedit" onclick="startEdit(${s.id},event)">✏️ Edit</button>
-        <button class="abtn adel" onclick="del(${s.id},event)">🗑️ Delete</button>
         ${myV?'<span style="font-size:10px;color:#aaa;margin-left:auto">✔ Voted</span>':''}
       </div>`:''}`;
     d.onclick=e=>{if(e.target.tagName!=='BUTTON'){map.flyTo([s.lat,s.lng],17,{duration:1.1});if(mks[s.id])mks[s.id].openPopup();}};
