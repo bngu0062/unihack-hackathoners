@@ -39,10 +39,10 @@ body{margin:0;padding:0;font-family:sans-serif;}
 
 #list{flex:1;overflow-y:auto;padding:8px;}
 
-#quick-add{display:none;padding:12px 14px;background:#fffde7;border-top:2px solid #fbc02d;flex-shrink:0;}
+#quick-add{display:none;padding:10px 12px;background:#fffde7;border-top:2px solid #fbc02d;flex-shrink:0;max-height:45vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 #qa-title{font-size:13px;font-weight:700;color:#f57f17;margin-bottom:6px;}
 #qa-addr-display{font-size:12px;color:#333;background:#fff9c4;border:1px solid #f9a825;border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.5;}
-#qa-notes{width:100%;border:1px solid #ccc;border-radius:8px;padding:8px 10px;font-size:13px;height:64px;resize:none;outline:none;background:white;margin-bottom:8px;transition:border-color .2s;}
+#qa-notes{width:100%;border:1px solid #ccc;border-radius:8px;padding:8px 10px;font-size:13px;height:52px;resize:none;outline:none;background:white;margin-bottom:8px;transition:border-color .2s;box-sizing:border-box;}
 #qa-notes:focus{border-color:#fbc02d;}
 #qa-btns{display:flex;gap:8px;}
 #qa-save{flex:1;background:#f9a825;color:white;border:none;border-radius:18px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;}
@@ -354,6 +354,28 @@ button { touch-action: manipulation; }
     border-radius: 6px 0 0 6px;
     writing-mode: vertical-rl;
   }
+}
+
+
+/* ── Quick-add panel responsive ── */
+@media(max-width:768px){
+  #quick-add { padding: 8px 10px; max-height: 38vh; }
+  #qa-title { font-size: 12px; margin-bottom: 4px; }
+  #qa-addr-display { font-size: 11px; padding: 6px 8px; margin-bottom: 6px; }
+  #qa-notes { font-size: 16px; height: 48px; margin-bottom: 6px; }
+  #qa-save, #qa-cancel { padding: 8px; font-size: 12px; }
+}
+@media(max-width:480px){
+  #quick-add { padding: 6px 8px; max-height: 35vh; }
+  #qa-title { font-size: 11px; }
+  #qa-addr-display { font-size: 10px; padding: 5px 7px; }
+  #qa-notes { height: 44px; font-size: 16px; }
+}
+
+/* ── myloc-btn never overflow bar ── */
+#myloc-btn { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media(max-width:700px){
+  #myloc-btn { max-width: 38px; }
 }
 
 </style>
