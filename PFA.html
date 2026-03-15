@@ -86,15 +86,7 @@ body{margin:0;padding:0;font-family:sans-serif;}
 #toast.on{opacity:1;}
 #locbtn{position:fixed;bottom:24px;left:16px;z-index:9998;width:38px;height:38px;border-radius:50%;background:white;border:1px solid #ccc;font-size:18px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);}
 
-@media(max-width:660px){
-  #map.split{width:100%;height:45vh;top:50px;}
-  #map.full{width:100%;height:calc(100vh - 50px);}
-  #side{width:100%;height:55vh;top:auto;bottom:0;right:0;border-left:none;border-top:1px solid #ccc;}
-  #side.hidden{transform:translateY(55vh);}
-  #locbtn{bottom:calc(55vh + 10px);}
-  #locbtn.sidebar-hidden{bottom:24px;}
-  #add-overlay{width:100%;top:auto;bottom:0;height:70vh;border-left:none;border-top:2px solid #1565c0;}
-}
+
 
 #tree{flex-shrink:0;max-height:200px;overflow-y:auto;border-bottom:2px solid #e0e0e0;}
 .troot{padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;background:#1976d2;color:white;border-bottom:1px solid #1565c0;}
@@ -181,6 +173,187 @@ body{margin:0;padding:0;font-family:sans-serif;}
 #add-sp-save-btn:hover{background:#388e3c;}
 @media(max-width:660px){
   #add-sp-panel{width:100%;top:auto;bottom:0;height:74vh;border-left:none;border-top:2px solid #1565c0;}
+}
+
+
+/* ── MOBILE FRIENDLY ── */
+input, textarea, select { font-size: 16px !important; }
+button { touch-action: manipulation; }
+.abtn { min-height: 36px; padding: 8px 14px; }
+.vbtn { min-height: 44px; padding: 10px; }
+.fbtn { min-height: 36px; padding: 6px 12px; }
+.card:active { border-color: #2196f3; background: #e3f2fd; }
+.tcc-row:active, .tst-row:active, .tsub-row:active, .tspot-row:active { background: #e3f2fd; }
+.vbtn:active:not(:disabled) { opacity: 0.75; }
+.abtn:active { opacity: 0.75; }
+#locbtn { width: 46px; height: 46px; font-size: 20px; }
+#sbtn, #toggle-btn, #myloc-btn, #addspot-btn { min-height: 36px; }
+.tspot-row { padding-top: 8px; padding-bottom: 8px; }
+.tcc-row { padding-top: 8px; padding-bottom: 8px; }
+.tst-row { padding-top: 7px; padding-bottom: 7px; }
+
+/* ════════════════════════════════════════
+   FULLY RESPONSIVE LAYOUT
+   ════════════════════════════════════════ */
+
+/* ── Base (all sizes) ── */
+#bar { flex-wrap: nowrap; }
+#sinput { flex: 1; min-width: 0; }
+
+/* ── Desktop: 1200px+ ── */
+@media(min-width:1200px){
+  #side { width: 380px; }
+  #map.split { width: calc(100% - 380px); }
+  #side.hidden { transform: translateX(380px); }
+  #add-overlay, #edit-panel, #add-sp-panel { width: 380px; }
+  #bar h1 { font-size: 18px; }
+  #sinput { max-width: 320px; font-size: 14px; }
+  #list { padding: 10px; }
+  .card { padding: 12px; }
+}
+
+/* ── Laptop / Large tablet: 769px–1199px ── */
+@media(min-width:769px) and (max-width:1199px){
+  #side { width: clamp(280px, 30vw, 340px); }
+  #map.split { width: calc(100% - clamp(280px, 30vw, 340px)); }
+  #side.hidden { transform: translateX(clamp(280px, 30vw, 340px)); }
+  #add-overlay, #edit-panel, #add-sp-panel { width: clamp(280px, 30vw, 340px); }
+  #sinput { max-width: 220px; font-size: 13px; }
+  #bar { gap: 8px; padding: 0 12px; }
+}
+
+/* ── Tablet portrait: 481px–768px ── */
+@media(min-width:481px) and (max-width:768px){
+  #bar { gap: 6px; padding: 0 10px; }
+  #sinput { max-width: 160px; font-size: 14px; }
+  #bar h1 { font-size: 14px; }
+  #map.split { width: 100%; height: 45vh; top: 50px; }
+  #map.full { width: 100%; height: calc(100dvh - 50px); }
+  #side { width: 100%; height: 55vh; top: auto; bottom: 0; right: 0; border-left: none; border-top: 1px solid #ccc; }
+  #side.hidden { transform: translateY(55vh); }
+  #locbtn { bottom: calc(55vh + 10px); }
+  #locbtn.sidebar-hidden { bottom: 24px; }
+  #add-overlay, #edit-panel, #add-sp-panel { width: 100%; height: 70vh; top: auto; bottom: 0; border-left: none; border-top: 2px solid #1565c0; }
+  .card { padding: 12px; }
+  .vbtn { font-size: 13px; }
+  #qa-notes { font-size: 16px; }
+  .abtn { font-size: 12px; min-height: 38px; }
+}
+
+/* ── Mobile portrait: 481px and below ── */
+@media(max-width:480px){
+  #bar { gap: 5px; padding: 0 8px; height: 46px; }
+  #bar h1 { font-size: 13px; }
+  #sinput { max-width: 110px; font-size: 14px; padding: 5px 8px; }
+  #sbtn, #toggle-btn { padding: 5px 10px; font-size: 11px; }
+  #myloc-btn, #addspot-btn { padding: 5px 8px; font-size: 11px; }
+  #map.split { width: 100%; height: 42vh; top: 46px; }
+  #map.full { width: 100%; height: calc(100dvh - 46px); top: 46px; }
+  #side { width: 100%; height: 58vh; top: auto; bottom: 0; right: 0; border-left: none; border-top: 1px solid #ccc; }
+  #side.hidden { transform: translateY(58vh); }
+  #locbtn { bottom: calc(58vh + 8px); width: 40px; height: 40px; font-size: 18px; }
+  #locbtn.sidebar-hidden { bottom: 20px; }
+  #add-overlay, #edit-panel, #add-sp-panel { width: 100%; height: 75vh; top: auto; bottom: 0; border-left: none; border-top: 2px solid #1565c0; }
+  .card { padding: 10px; }
+  .card b { font-size: 13px; }
+  .vbtn { font-size: 12px; padding: 8px 6px; }
+  .abtn { font-size: 11px; padding: 7px 10px; }
+  #tree { max-height: 160px; }
+  #qa-notes { font-size: 16px; }
+}
+
+/* ── Mobile LANDSCAPE (phone on its side) ── */
+@media(max-width:900px) and (orientation:landscape) and (max-height:500px){
+  #bar { height: 44px; gap: 5px; padding: 0 8px; }
+  #map.split { width: 55%; height: calc(100dvh - 44px); top: 44px; }
+  #map.full { width: 100%; height: calc(100dvh - 44px); top: 44px; }
+  #side { width: 45%; height: calc(100dvh - 44px); top: 44px; bottom: auto; right: 0; border-left: 1px solid #ccc; border-top: none; transform: none; }
+  #side.hidden { transform: translateX(45vw); }
+  #locbtn { bottom: 12px; left: 10px; width: 36px; height: 36px; font-size: 16px; }
+  #locbtn.sidebar-hidden { bottom: 12px; }
+  #add-overlay, #edit-panel, #add-sp-panel { width: 45%; height: calc(100dvh - 44px); top: 44px; bottom: auto; border-left: 2px solid #1565c0; border-top: none; }
+  #tree { max-height: 120px; }
+  .card { padding: 8px; }
+  .vbtn { font-size: 11px; padding: 6px; }
+  .abtn { font-size: 10px; padding: 5px 8px; min-height: 30px; }
+  #sinput { max-width: 120px; }
+}
+
+
+
+/* ── Pull tab to show/hide sidebar ── */
+#side-pull-tab {
+  position: absolute;
+  left: -18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 56px;
+  background: #1976d2;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 6px 0 0 6px;
+  z-index: 501;
+  user-select: none;
+  box-shadow: -2px 0 6px rgba(0,0,0,.2);
+  transition: background .2s;
+}
+#side-pull-tab:hover { background: #1565c0; }
+#side.hidden #side-pull-tab { content: '❯'; }
+
+/* ── Sidebar scrollable ── */
+#side { overflow: hidden; }
+#list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px; }
+#tree { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* ── Bar: show/hide labels responsively ── */
+@media(max-width:700px){
+  .btn-label { display: none; }
+  .bar-full { display: none !important; }
+  .bar-short { display: inline !important; }
+  #sbtn, #myloc-btn, #addspot-btn { padding: 7px 10px; font-size: 16px; min-width: 38px; border-radius: 50%; }
+  #toggle-btn { padding: 7px 10px; border-radius: 50%; }
+  #sinput { flex: 1; min-width: 0; font-size: 16px; padding: 7px 10px; }
+  #bar h1 { font-size: 13px; flex-shrink: 0; }
+}
+@media(min-width:701px){
+  .btn-label { display: inline; }
+  .bar-full { display: inline !important; }
+  .bar-short { display: none !important; }
+}
+
+/* ── Mobile portrait: pull tab becomes bottom tab ── */
+@media(max-width:768px){
+  #side { position: fixed; }
+  #side-pull-tab {
+    position: absolute;
+    left: 50%;
+    top: -18px;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 18px;
+    border-radius: 6px 6px 0 0;
+    writing-mode: horizontal-tb;
+    font-size: 10px;
+    box-shadow: 0 -2px 6px rgba(0,0,0,.2);
+  }
+}
+
+/* ── Landscape mobile: pull tab on left edge ── */
+@media(max-width:900px) and (orientation:landscape) and (max-height:500px){
+  #side-pull-tab {
+    left: -18px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 56px;
+    border-radius: 6px 0 0 6px;
+    writing-mode: vertical-rl;
+  }
 }
 
 </style>
@@ -353,17 +526,18 @@ window.addEventListener('load', function(){
 <body>
 
 <div id="bar">
-  <h1>🅿️ PFA <span style="font-size:10px;opacity:.6;font-weight:400">Parking For All</span></h1>
+  <h1>🅿️ <span class="bar-full">PFA <span style="font-size:10px;opacity:.6;font-weight:400">Parking For All</span></span><span class="bar-short" style="display:none">PFA</span></h1>
   <input id="sinput" placeholder="Search a location…"/>
-  <button id="sbtn">🔍 Search</button>
-  <button id="myloc-btn" onclick="locateAndAdd()">📍 My Location</button>
-  <button id="addspot-btn" onclick="openAddSpotPanel()">➕ Add Spot</button>
-  <button id="toggle-btn" onclick="toggleSidebar()">☰</button>
+  <button id="sbtn"><span class="btn-icon">🔍</span><span class="btn-label"> Search</span></button>
+  <button id="myloc-btn" onclick="locateAndAdd()"><span class="btn-icon">📍</span><span class="btn-label"> My Location</span></button>
+  <button id="addspot-btn" onclick="openAddSpotPanel()"><span class="btn-icon">➕</span><span class="btn-label"> Add Spot</span></button>
+  <button id="toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
 </div>
 
 <div id="map" class="split"></div>
 
 <div id="side">
+  <div id="side-pull-tab" onclick="toggleSidebar()" title="Hide sidebar">&#10094;</div>
   <div id="side-head">
     <h2>🌍 PFA – Parking For All</h2>
     <span id="cnt">10 spots</span>
@@ -1198,7 +1372,7 @@ function render(){
       ${confirmed?"":'<div class="vrow"><button class="vbtn vyes'+( myUp?" chosen":"")+'" '+( myV?"disabled":"")+' onclick="vote('+s.id+',1,event)">✅ Still free'+(myUp?" ✔":"")+'</button><button class="vbtn vno'+(myDn?" chosen":"")+'"  '+(myV?"disabled":"")+' onclick="vote('+s.id+',-1,event)">❌ Not free'+(myDn?" ✔":"")+'</button></div>'}
       <div class="arow">
         ${confirmed?"":'<button class="abtn aedit" onclick="startEdit('+s.id+',event)">✏️ Edit</button>'}
-        <button class="abtn adel" onclick="del(${s.id},event)">🗑️ Delete ${s.delu&&s.delu.length>0?`(${s.delu.length}/3)`:""}</button>
+        ${confirmed?'<button class="abtn adel" onclick="del('+s.id+',event)">🗑️ Delete</button>':""}
         ${myV?'<span style="font-size:10px;color:#aaa;margin-left:auto">✔ Voted</span>':""}
       </div>`;
     d.onclick=e=>{if(e.target.tagName!=="BUTTON"){map.flyTo([s.lat,s.lng],17,{duration:1.1});mks[s.id]?.openPopup();}};
