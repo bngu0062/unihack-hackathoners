@@ -222,7 +222,6 @@ async function loadSpots(){
 }
 
 async function syncSpots(){
-  // Only sync vote counts and spot existence — preserve UI open/close state
   const snap = await getDocs(spotsCol);
   var fbIds = [];
   snap.forEach(function(d){
@@ -230,34 +229,27 @@ async function syncSpots(){
     var data = d.data();
     var existing = spots.find(function(x){ return x._fid===d.id; });
     if(existing){
-      // Update only vote/delete fields
-      existing.up = data.up || 0;
-      existing.dn = data.dn || 0;
-      existing.uv = data.uv || [];
-      existing.dv = data.dv || [];
-      existing.delu = data.delu || [];
+      existing.up = data.up||0;
+      existing.dn = data.dn||0;
+      existing.uv = data.uv||[];
+      existing.dv = data.dv||[];
+      existing.delu = data.delu||[];
     } else {
-      // New spot added by someone else — add it
       var s = data;
       s._fid = d.id;
       s.id = s.id || nid++;
-      s.uv = s.uv || [];
-      s.dv = s.dv || [];
-      s.delu = s.delu || [];
-      s.up = s.up || 0;
-      s.dn = s.dn || 0;
+      s.uv = s.uv||[]; s.dv = s.dv||[];
+      s.delu = s.delu||[];
+      s.up = s.up||0; s.dn = s.dn||0;
       spots.push(s);
-      if(_ccReady && userCC && s.cc && s.cc!==userCC) return;
-      putMk(s);
+      if(!(_ccReady && userCC && s.cc && s.cc!==userCC)) putMk(s);
     }
   });
-  // Remove spots deleted by others
   var toRemove = spots.filter(function(s){ return s._fid && !fbIds.includes(s._fid); });
   toRemove.forEach(function(s){
     if(mks[s.id]){ map.removeLayer(mks[s.id]); delete mks[s.id]; }
   });
-  spots = spots.filter(function(s){ return !s._fid || fbIds.includes(s._fid); });
-  // Refresh only the card currently open + tree counts (not full rebuild)
+  if(toRemove.length) spots = spots.filter(function(s){ return !s._fid || fbIds.includes(s._fid); });
   updateTreeCounts();
   if(tSelectedId!==null) render();
 }
@@ -316,10 +308,44 @@ window.fbVoteDel = async function(s){
 
 // Wait for main app to be ready then load
 window.addEventListener('load', function(){
-  setTimeout(loadSpots, 500);
-  setInterval(function(){
-    syncSpots();
-  }, 15000);
+  setTimeout(function(){
+    loadSpots().then(function(){
+      onSnapshot(spotsCol, function(snap){
+        snap.docChanges().forEach(function(change){
+          var data = change.doc.data();
+          var fid = change.doc.id;
+          if(change.type === "modified"){
+            var s = spots.find(function(x){ return x._fid===fid; });
+            if(s){
+              s.up = data.up||0; s.dn = data.dn||0;
+              s.uv = data.uv||[]; s.dv = data.dv||[];
+              s.delu = data.delu||[];
+            }
+          } else if(change.type === "added"){
+            var existing = spots.find(function(x){ return x._fid===fid; });
+            if(!existing){
+              var ns = data; ns._fid = fid;
+              ns.id = ns.id || nid++;
+              ns.uv = ns.uv||[]; ns.dv = ns.dv||[];
+              ns.delu = ns.delu||[];
+              ns.up = ns.up||0; ns.dn = ns.dn||0;
+              spots.push(ns);
+              if(!(_ccReady && userCC && ns.cc && ns.cc!==userCC)) putMk(ns);
+            }
+          } else if(change.type === "removed"){
+            var s = spots.find(function(x){ return x._fid===fid; });
+            if(s){
+              if(mks[s.id]){ map.removeLayer(mks[s.id]); delete mks[s.id]; }
+              spots = spots.filter(function(x){ return x._fid!==fid; });
+              if(tSelectedId===s.id) tSelectedId=null;
+            }
+          }
+        });
+        updateTreeCounts();
+        if(tSelectedId!==null) render();
+      });
+    });
+  }, 500);
 });
 </script>
 
@@ -1169,13 +1195,10 @@ function render(){
       ${s.n?`<em>${s.n}</em>`:""}
       ${thtml(s)}
       <div style="font-size:11px;color:#777;margin-bottom:6px">✅ <b>${s.up}</b> confirmed &nbsp; ❌ <b>${s.dn}</b> disputed</div>
-      <div class="vrow">
-        <button class="vbtn vyes${myUp?" chosen":""}" ${myV?"disabled":""} onclick="vote(${s.id},1,event)">✅ Still free${myUp?" ✔":""}</button>
-        <button class="vbtn vno${myDn?" chosen":""}"  ${myV?"disabled":""} onclick="vote(${s.id},-1,event)">❌ Not free${myDn?" ✔":""}</button>
-      </div>
+      ${confirmed?"":'<div class="vrow"><button class="vbtn vyes'+( myUp?" chosen":"")+'" '+( myV?"disabled":"")+' onclick="vote('+s.id+',1,event)">✅ Still free'+(myUp?" ✔":"")+'</button><button class="vbtn vno'+(myDn?" chosen":"")+'"  '+(myV?"disabled":"")+' onclick="vote('+s.id+',-1,event)">❌ Not free'+(myDn?" ✔":"")+'</button></div>'}
       <div class="arow">
-        <button class="abtn aedit" onclick="startEdit(${s.id},event)">✏️ Edit</button>
-        <button class="abtn adel" onclick="del(${s.id},event)">🗑️ Delete</button>
+        ${confirmed?"":'<button class="abtn aedit" onclick="startEdit('+s.id+',event)">✏️ Edit</button>'}
+        <button class="abtn adel" onclick="del(${s.id},event)">🗑️ Delete ${s.delu&&s.delu.length>0?`(${s.delu.length}/3)`:""}</button>
         ${myV?'<span style="font-size:10px;color:#aaa;margin-left:auto">✔ Voted</span>':""}
       </div>`;
     d.onclick=e=>{if(e.target.tagName!=="BUTTON"){map.flyTo([s.lat,s.lng],17,{duration:1.1});mks[s.id]?.openPopup();}};
@@ -1207,16 +1230,24 @@ function vote(id,v,e){
 
 function del(id,e){
   e.stopPropagation();
-  var pw = prompt("Enter admin password to delete this spot:");
-  if(pw !== "kingperplexity"){ toast("❌ Incorrect password."); return; }
   var s=spots.find(function(x){return x.id===id;});
   if(!s)return;
+  if(!s.delu) s.delu=[];
+  if(s.delu.includes(uid)){toast("You already voted to delete this spot.");return;}
+  s.delu.push(uid);
+  var remaining=3-s.delu.length;
+  if(remaining>0){
+    toast("🗑️ "+remaining+" more user"+(remaining===1?"":"s")+" needed to delete this spot.");
+    if(window.fbVoteDel) window.fbVoteDel(s);
+    buildTree();render();
+    return;
+  }
   var fid=s._fid||null;
   if(window.fbDeleteSpot) window.fbDeleteSpot(fid);
   if(mks[id]){map.removeLayer(mks[id]);delete mks[id];}
   spots=spots.filter(function(x){return x.id!==id;});
   buildTree();render();
-  toast("🗑️ Spot deleted.");
+  toast("🗑️ Spot deleted by community.");
 }
 
 // ── EDIT — resets votes ────────────────────────────────────────────────────
