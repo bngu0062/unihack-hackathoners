@@ -100,7 +100,7 @@ body{margin:0;padding:0;font-family:sans-serif;}
   #add-overlay{width:100%;top:auto;bottom:0;height:70vh;border-left:none;border-top:2px solid #1565c0;}
 }
 
-#sync-indicator{position:fixed;bottom:20px;right:16px;z-index:9998;display:flex;align-items:center;gap:6px;background:white;border:1px solid #ddd;border-radius:20px;padding:5px 12px;font-size:11px;color:#888;box-shadow:0 2px 6px rgba(0,0,0,.15);transition:all .3s;pointer-events:none;}
+#sync-indicator{position:fixed;bottom:24px;left:64px;z-index:9997;display:flex;align-items:center;gap:6px;background:white;border:1px solid #ddd;border-radius:20px;padding:5px 12px;font-size:11px;color:#888;box-shadow:0 2px 6px rgba(0,0,0,.15);transition:all .3s;pointer-events:none;}
 #sync-indicator.syncing{border-color:#2196f3;color:#2196f3;background:#e3f2fd;}
 #sync-indicator.synced{border-color:#43a047;color:#2e7d32;background:#e8f5e9;}
 #sync-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;}
@@ -152,8 +152,9 @@ body{margin:0;padding:0;font-family:sans-serif;}
 
   <div id="list-hint">
     <div style="font-size:32px">🅿️</div>
-    <div><b style="color:#555">Browse spots above</b></div>
-    <div style="font-size:12px;color:#aaa">Click a spot name in the tree<br>to view its full details</div>
+    <div id="hint-title"><b style="color:#555">Browse spots above</b></div>
+    <div id="hint-sub" style="font-size:12px;color:#aaa">Click a spot name in the tree<br>to view its full details</div>
+    <button id="hint-add-btn" onclick="openAddPanel()" style="display:none;margin-top:10px;padding:9px 20px;background:#1976d2;color:white;border:none;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;">➕ Add the First Spot</button>
   </div>
   <div id="list"></div>
 
@@ -170,6 +171,7 @@ body{margin:0;padding:0;font-family:sans-serif;}
 
 <button id="locbtn" onclick="locate()">📍</button>
 <div id="toast"></div>
+<div id="sync-indicator"><div id="sync-ring"></div><div id="sync-dot"></div><span id="sync-label">Syncing…</span></div>
 
 <div id="add-overlay">
   <div id="add-overlay-hdr">
@@ -193,7 +195,6 @@ body{margin:0;padding:0;font-family:sans-serif;}
   </div>
 </div>
 
-<div id="sync-indicator"><div id="sync-ring"></div><div id="sync-dot"></div><span id="sync-label">Syncing…</span></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -410,6 +411,26 @@ async function locateAndAdd(){
   },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
 }
 
+// ── Find existing spot at coordinates ────────────────────────────────────
+// Returns a spot if one exists within ~10 metres of the given lat/lng
+function findNearbySpot(lat, lng){
+  const THRESHOLD = 0.0001; // ~10m
+  return spots.find(s => Math.abs(s.lat - lat) < THRESHOLD && Math.abs(s.lng - lng) < THRESHOLD) || null;
+}
+
+// Show the existing spot: fly to it, open its card, highlight it
+function showExistingSpot(s){
+  if(smk){map.removeLayer(smk);smk=null;}
+  if(addMk){map.removeLayer(addMk);addMk=null;}
+  closeQuickAdd();
+  closeAddPanel();
+  openTreeToSpot(s);
+  tGoSpot(s.id, null);
+  map.flyTo([s.lat, s.lng], 18, {duration:1.2});
+  if(mks[s.id]) mks[s.id].openPopup();
+  toast('📍 This spot already exists — shown below!');
+}
+
 // ── Search ────────────────────────────────────────────────────────────────
 async function doSearch(){
   const q=document.getElementById('sinput').value.trim(); if(!q)return;
@@ -429,6 +450,9 @@ async function doSearch(){
     const streetLine=[num,road].filter(Boolean).join(' ')||d.display_name.split(',')[0];
     const cityLine=[suburb,city,state,postcode].filter(Boolean).join(', ');
     pending={lat,lng,fullAddr:streetLine,c:cityLine||city,co:country,cc,state:state||'',city:city||'',suburb:suburb||''};
+    // Check if a spot already exists at these coordinates
+    const existing=findNearbySpot(lat,lng);
+    if(existing){showExistingSpot(existing);return;}
     if(smk){map.removeLayer(smk);smk=null;}
     smk=L.marker([lat,lng],{icon:pi}).addTo(map)
       .bindPopup(`<b>📍 ${streetLine}</b><br><small>${cityLine}, ${country}</small>`).openPopup();
@@ -547,6 +571,13 @@ async function searchAddSpot(){
     const street=[num,road].filter(Boolean).join(' ')||q;
     const cityLine=[suburb2,city2,state2].filter(Boolean).join(', ');
     addPnd={lat,lng,addr:street,c:cityLine,co:country,cc:cc2,state:state2,city:city2,suburb:suburb2};
+    // Check if a spot already exists at these coordinates
+    const existing=findNearbySpot(lat,lng);
+    if(existing){
+      document.getElementById('add-status').innerHTML='⚠️ <b>A spot already exists here.</b> Showing it now…';
+      setTimeout(()=>{closeAddPanel();showExistingSpot(existing);},800);
+      return;
+    }
     if(addMk) map.removeLayer(addMk);
     addMk=L.marker([lat,lng],{icon:greenIcon}).addTo(map)
       .bindPopup(`<b>${street}</b><br><small>${cityLine}</small>`).openPopup();
@@ -845,7 +876,33 @@ function render(){
   document.getElementById('cnt').textContent=spots.length+' spot'+(spots.length!==1?'s':'');
   const shown=tSelectedId===null?[]:spots.filter(s=>s.id===tSelectedId);
   el.style.display=tSelectedId!==null?'block':'none';
-  if(hint) hint.style.display=tSelectedId===null?'flex':'none';
+  if(hint){
+    hint.style.display=tSelectedId===null?'flex':'none';
+    // Update hint content based on whether spots exist
+    const titleEl=document.getElementById('hint-title');
+    const subEl=document.getElementById('hint-sub');
+    const addBtn=document.getElementById('hint-add-btn');
+    if(spots.length===0){
+      if(titleEl) titleEl.innerHTML='<b style="color:#1976d2">No spots yet — be the first!</b>';
+      if(subEl) subEl.innerHTML='Search a location above or click <b>➕ Add Spot</b><br>to add the first free parking spot.';
+      if(addBtn) addBtn.style.display='inline-block';
+    } else {
+      if(titleEl) titleEl.innerHTML='<b style="color:#555">Browse spots above</b>';
+      if(subEl) subEl.innerHTML='Click a spot name in the tree<br>to view its full details';
+      if(addBtn) addBtn.style.display='none';
+    }
+  }
+  // Update hint content based on whether any spots exist
+  if(hint){
+    const empty=spots.length===0;
+    document.getElementById('hint-title').innerHTML=empty
+      ?'<b style="color:#555">No spots yet!</b>'
+      :'<b style="color:#555">Browse spots above</b>';
+    document.getElementById('hint-sub').innerHTML=empty
+      ?'Be the first to add a free parking spot<br>in your area.'
+      :'Click a spot name in the tree<br>to view its full details';
+    document.getElementById('hint-add-btn').style.display=empty?'inline-block':'none';
+  }
   el.innerHTML='';
   if(!shown.length&&tSelectedId!==null){el.innerHTML='<p style="text-align:center;color:#aaa;padding:20px;font-size:13px">No PFA spots match this filter.</p>';return;}
   [...shown].sort((a,b)=>(b.up-b.dn)-(a.up-a.dn)).forEach(s=>{
