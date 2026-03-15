@@ -261,7 +261,12 @@ const greenIcon=gi;
 // ── API helpers ───────────────────────────────────────────────────────────
 async function apiFetch(path, opts){
   const res = await fetch(path, opts);
-  if(!res.ok) throw new Error(await res.text());
+  if(!res.ok){
+    const body = await res.text();
+    const err = new Error(body);
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
@@ -470,7 +475,11 @@ async function quickSave(){
     closeQuickAdd();
     setTimeout(()=>mks[s.id]?.openPopup(),400);
     toast('✅ PFA spot saved!');
-  }catch(e){toast('❌ Failed to save spot.');}
+  }catch(e){
+    let msg=e.message||'';
+    try{const j=JSON.parse(msg);if(j.duplicate)msg='⚠️ A spot already exists at this location.';}catch(_){}
+    toast(msg.includes('already exists')?msg:'❌ Failed to save spot.');
+  }
 }
 
 function closeQuickAdd(){
@@ -574,7 +583,12 @@ async function saveAddSpot(){
     if(addMk){map.removeLayer(addMk);addMk=null;}
     putMk(s);buildTree();closeAddPanel();
     toast('✅ PFA spot saved!');
-  }catch(e){document.getElementById('add-status').textContent='❌ Failed to save.';toast('❌ Failed to save spot.');}
+  }catch(e){
+    let msg=e.message||'';
+    try{const j=JSON.parse(msg);if(j.duplicate){document.getElementById('add-status').textContent='⚠️ A spot already exists at this location.';toast('⚠️ A spot already exists at this location.');return;}}catch(_){}
+    document.getElementById('add-status').textContent='❌ Failed to save.';
+    toast('❌ Failed to save spot.');
+  }
 }
 
 async function saveEditSpot(id){
@@ -631,6 +645,37 @@ async function del(id,e){
     if(tSelectedId===id) tSelectedId=null;
     buildTree();render();toast('🗑️ Deleted.');
   }catch(e){toast('❌ Failed to delete.');}
+}
+
+// ── Request deletion (confirmed spots) ───────────────────────────────────
+async function requestDelete(id,e){
+  e.stopPropagation();
+  const s=spots.find(x=>x.id===id); if(!s)return;
+  if(s.my_delete_vote){toast('You already requested deletion of this spot.');return;}
+  const dvCount=(s.delete_votes||[]).length;
+  const remaining=3-dvCount-1;
+  if(!confirm(`Request deletion of this spot?\n\n${dvCount+1}/3 votes — ${remaining>0?remaining+' more vote'+(remaining!==1?'s':'')+' needed to delete.':'this will delete the spot immediately.'}`))return;
+  try{
+    const res=await apiFetch('/api/spots/'+id+'/delete-vote',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({uid})
+    });
+    if(res.removed){
+      toast('🗑️ Spot deleted by community vote.');
+      if(mks[id]){map.removeLayer(mks[id]);delete mks[id];}
+      spots=spots.filter(x=>x.id!==id);
+      if(tSelectedId===id) tSelectedId=null;
+      buildTree();render();return;
+    }
+    const idx=spots.findIndex(x=>x.id===id);
+    if(idx>=0) spots[idx]=res;
+    const cnt=(res.delete_votes||[]).length;
+    toast('🗑️ Deletion requested. '+cnt+'/3 votes.');
+    render();
+  }catch(err){
+    const msg=err.message||'';
+    if(msg.includes('Already voted')) toast('You already requested deletion of this spot.');
+    else toast('❌ Failed to submit deletion request.');
+  }
 }
 
 // ── Edit ──────────────────────────────────────────────────────────────────
@@ -815,16 +860,27 @@ function render(){
         ?'<span style="background:#e8f5e9;color:#2e7d32;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px">✅ Confirmed</span>'
         :'<span style="background:#f5f5f5;color:#888;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px">❓ Unconfirmed</span>'}</small>
       ${s.n?`<em>${s.n}</em>`:''}
-      ${thtml(s)}
-      <div style="font-size:11px;color:#777;margin-bottom:6px">✅ <b>${s.up}</b> confirmed &nbsp; ❌ <b>${s.dn}</b> disputed</div>
-      <div class="vrow">
-        <button class="vbtn vyes${myUp?' chosen':''}" ${myV?'disabled':''} onclick="vote(${s.id},1,event)">✅ Still free${myUp?' ✔':''}</button>
-        <button class="vbtn vno${myDn?' chosen':''}"  ${myV?'disabled':''} onclick="vote(${s.id},-1,event)">❌ Not free${myDn?' ✔':''}</button>
-      </div>
+      ${confirmed?'':thtml(s)}
+      ${confirmed?'':'<div style="font-size:11px;color:#777;margin-bottom:6px">✅ <b>'+s.up+'</b> confirmed &nbsp; ❌ <b>'+s.dn+'</b> disputed</div>'}
+      ${confirmed?'':
+        `<div class="vrow">
+          <button class="vbtn vyes${myUp?' chosen':''}" ${myV?'disabled':''} onclick="vote(${s.id},1,event)">✅ Still free${myUp?' ✔':''}</button>
+          <button class="vbtn vno${myDn?' chosen':''}"  ${myV?'disabled':''} onclick="vote(${s.id},-1,event)">❌ Not free${myDn?' ✔':''}</button>
+        </div>`
+      }
+      ${confirmed?(()=>{
+        const dvCount=(s.delete_votes||[]).length;
+        const myDV=s.my_delete_vote;
+        return `<div style="font-size:11px;color:#888;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+          <span>🗑️ Deletion requests: <b>${dvCount}</b>/3</span>
+          ${dvCount>0?'<div style="flex:1;background:#eee;border-radius:4px;height:5px;overflow:hidden;"><div style="width:'+Math.round(dvCount/3*100)+'%;height:100%;background:#e53935;border-radius:4px;"></div></div>':''}
+        </div>
+        <button class="vbtn vno${myDV?' chosen':''}" style="margin-bottom:6px;" ${myDV?'disabled':''} onclick="requestDelete(${s.id},event)">🗑️ Request Deletion${myDV?' ✔':' ('+dvCount+'/3)'}</button>`;
+      })():''}
       <div class="arow">
         <button class="abtn aedit" onclick="startEdit(${s.id},event)">✏️ Edit</button>
-        <button class="abtn adel"  onclick="del(${s.id},event)">🗑️ Delete</button>
-        ${myV?'<span style="font-size:10px;color:#aaa;margin-left:auto">✔ Voted</span>':''}
+        ${!confirmed?`<button class="abtn adel" onclick="del(${s.id},event)">🗑️ Delete</button>`:''}
+        ${myV&&!confirmed?'<span style="font-size:10px;color:#aaa;margin-left:auto">✔ Voted</span>':''}
       </div>`;
     d.onclick=e=>{if(e.target.tagName!=='BUTTON'){map.flyTo([s.lat,s.lng],17,{duration:1.1});if(mks[s.id])mks[s.id].openPopup();}};
     el.appendChild(d);

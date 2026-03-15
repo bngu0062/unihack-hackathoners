@@ -82,12 +82,18 @@ def init_db():
             suburb  TEXT NOT NULL DEFAULT '',
             n       TEXT NOT NULL DEFAULT '',
             up      INTEGER NOT NULL DEFAULT 0,
-            dn      INTEGER NOT NULL DEFAULT 0
-        )''')
+            dn      INTEGER NOT NULL DEFAULT 0,
+            UNIQUE (lat, lng)
+        ''')
         cur.execute('''CREATE TABLE IF NOT EXISTS votes (
             spot_id INTEGER NOT NULL,
             uid     TEXT    NOT NULL,
             vote    INTEGER NOT NULL,
+            PRIMARY KEY (spot_id, uid)
+        )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS delete_votes (
+            spot_id INTEGER NOT NULL,
+            uid     TEXT    NOT NULL,
             PRIMARY KEY (spot_id, uid)
         )''')
         cur.execute('SELECT COUNT(*) FROM spots')
@@ -112,6 +118,11 @@ def init_db():
             spot_id INTEGER NOT NULL,
             uid     TEXT    NOT NULL,
             vote    INTEGER NOT NULL,
+            PRIMARY KEY (spot_id, uid)
+        )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS delete_votes (
+            spot_id INTEGER NOT NULL,
+            uid     TEXT    NOT NULL,
             PRIMARY KEY (spot_id, uid)
         )''')
         cur.execute('SELECT COUNT(*) FROM spots')
@@ -144,6 +155,10 @@ def spot_to_dict(row, uid=None, conn=None):
     d['uv'] = uv
     d['dv'] = dv
     d['my_vote'] = 1 if uid in uv else (-1 if uid in dv else 0)
+    cur.execute(f'SELECT uid FROM delete_votes WHERE spot_id={P()}', (d['id'],))
+    dvotes = [r['uid'] for r in cur.fetchall()]
+    d['delete_votes'] = dvotes
+    d['my_delete_vote'] = uid in dvotes if uid else False
     if owns_conn:
         conn.close()
     return d
@@ -175,6 +190,12 @@ def add_spot():
         return jsonify({'error': 'Missing required fields'}), 400
     conn = get_db()
     cur = conn.cursor()
+    # Check for existing spot at same coordinates
+    cur.execute(f'SELECT * FROM spots WHERE lat={P()} AND lng={P()}', (data['lat'], data['lng']))
+    existing = cur.fetchone()
+    if existing:
+        conn.close()
+        return jsonify({'error': 'A spot already exists at these coordinates', 'duplicate': True}), 409
     if USE_PG:
         cur.execute(
             f'INSERT INTO spots (lat,lng,a,c,co,cc,state,city,suburb,n,up,dn) VALUES ({ph(12)}) RETURNING id',
@@ -221,6 +242,7 @@ def edit_spot(spot_id):
          spot_id)
     )
     cur.execute(f'DELETE FROM votes WHERE spot_id={P()}', (spot_id,))
+    cur.execute(f'DELETE FROM delete_votes WHERE spot_id={P()}', (spot_id,))
     conn.commit()
     cur.execute(f'SELECT * FROM spots WHERE id={P()}', (spot_id,))
     result = spot_to_dict(cur.fetchone(), data.get('uid',''), conn)
@@ -233,6 +255,7 @@ def delete_spot(spot_id):
     conn = get_db()
     cur = conn.cursor()
     cur.execute(f'DELETE FROM votes WHERE spot_id={P()}', (spot_id,))
+    cur.execute(f'DELETE FROM delete_votes WHERE spot_id={P()}', (spot_id,))
     cur.execute(f'DELETE FROM spots WHERE id={P()}', (spot_id,))
     conn.commit()
     conn.close()
@@ -277,6 +300,49 @@ def vote_spot(spot_id):
         return jsonify({'removed': True, 'id': spot_id})
 
     result = spot_to_dict(row, uid, conn)
+    conn.close()
+    return jsonify(result)
+
+
+
+@app.route('/api/spots/<int:spot_id>/delete-vote', methods=['POST'])
+def delete_vote_spot(spot_id):
+    data = request.get_json()
+    uid = data.get('uid', '')
+    if not uid:
+        return jsonify({'error': 'uid required'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(f'SELECT * FROM spots WHERE id={P()}', (spot_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'Not found'}), 404
+
+    cur.execute(f'SELECT uid FROM delete_votes WHERE spot_id={P()} AND uid={P()}', (spot_id, uid))
+    if cur.fetchone():
+        conn.close()
+        return jsonify({'error': 'Already voted'}), 409
+
+    cur.execute(f'INSERT INTO delete_votes (spot_id, uid) VALUES ({ph(2)})', (spot_id, uid))
+    conn.commit()
+
+    cur.execute(f'SELECT COUNT(*) FROM delete_votes WHERE spot_id={P()}', (spot_id,))
+    row2 = cur.fetchone()
+    count = row2['count'] if USE_PG else row2[0]
+
+    NEED_DEL = 3
+    if count >= NEED_DEL:
+        cur.execute(f'DELETE FROM votes WHERE spot_id={P()}', (spot_id,))
+        cur.execute(f'DELETE FROM delete_votes WHERE spot_id={P()}', (spot_id,))
+        cur.execute(f'DELETE FROM spots WHERE id={P()}', (spot_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'removed': True, 'id': spot_id})
+
+    result = spot_to_dict(dict(row), uid, conn)
+    result['delete_votes_count'] = count
     conn.close()
     return jsonify(result)
 
