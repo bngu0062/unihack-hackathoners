@@ -90,14 +90,68 @@ body{margin:0;padding:0;font-family:sans-serif;}
 #toast.on{opacity:1;}
 #locbtn{position:fixed;bottom:24px;left:16px;z-index:9998;width:38px;height:38px;border-radius:50%;background:white;border:1px solid #ccc;font-size:18px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(33,150,243,.6);}70%{box-shadow:0 0 0 14px rgba(33,150,243,0);}100%{box-shadow:0 0 0 0 rgba(33,150,243,0);}}
+/* ── Tablet ── */
+@media(max-width:900px){
+  #sinput{max-width:180px;}
+}
+
+/* ── Mobile ── */
 @media(max-width:660px){
-  #map.split{width:100%;height:45vh;top:50px;}
+  /* Navbar: hide text labels, keep icons compact */
+  #bar{padding:0 8px;gap:6px;height:50px;}
+  #bar h1{font-size:13px;}
+  #bar h1 span{display:none;}
+  #sinput{max-width:none;flex:1;min-width:0;font-size:12px;padding:5px 10px;}
+  #sbtn{padding:5px 10px;font-size:12px;}
+  #myloc-btn{font-size:0;padding:7px 10px;}
+  #myloc-btn::before{content:'📍';font-size:16px;}
+  #addspot-btn{font-size:0;padding:7px 10px;}
+  #addspot-btn::before{content:'➕';font-size:16px;}
+  #toggle-btn{font-size:0;padding:7px 10px;}
+  #toggle-btn::before{content:'☰';font-size:16px;}
+
+  /* Map takes top half */
+  #map.split{width:100%;height:44vh;top:50px;}
   #map.full{width:100%;height:calc(100vh - 50px);}
-  #side{width:100%;height:55vh;top:auto;bottom:0;right:0;border-left:none;border-top:1px solid #ccc;}
-  #side.hidden{transform:translateY(55vh);}
-  #locbtn{bottom:calc(55vh + 10px);}
-  #locbtn.sidebar-hidden{bottom:24px;}
-  #add-overlay{width:100%;top:auto;bottom:0;height:70vh;border-left:none;border-top:2px solid #1565c0;}
+
+  /* Sidebar slides up from bottom */
+  #side{width:100%;height:56vh;top:auto;bottom:0;right:0;border-left:none;border-top:2px solid #e0e0e0;border-radius:14px 14px 0 0;}
+  #side.hidden{transform:translateY(56vh);}
+  #side-head{border-radius:14px 14px 0 0;}
+  #side-head h2{font-size:13px;}
+
+  /* Tree smaller on mobile */
+  #tree{max-height:140px;}
+
+  /* Locate button above sidebar */
+  #locbtn{bottom:calc(56vh + 10px);left:10px;}
+  #locbtn.sidebar-hidden{bottom:16px;}
+
+  /* Sync indicator: tuck next to locbtn */
+  #sync-indicator{left:58px;bottom:calc(56vh + 8px);}
+  #sync-indicator.sidebar-hidden-sync{bottom:14px;}
+
+  /* Add overlay: full-width sheet from bottom */
+  #add-overlay{width:100%;top:auto;bottom:0;height:75vh;border-left:none;border-top:2px solid #1565c0;border-radius:14px 14px 0 0;}
+
+  /* Quick-add panel: more padding for thumbs */
+  #quick-add{padding:14px 12px;}
+  #qa-notes{font-size:14px;height:72px;}
+  #qa-save,#qa-cancel{padding:11px;}
+
+  /* Cards: larger tap targets */
+  .vbtn{padding:10px 6px;font-size:13px;}
+  .abtn{padding:7px 14px;font-size:12px;}
+  .card{padding:12px;}
+
+  /* Toast above sidebar */
+  #toast{bottom:calc(56vh + 16px);}
+}
+
+/* ── Very small phones ── */
+@media(max-width:380px){
+  #sinput{display:none;}
+  #sbtn{display:none;}
 }
 
 #sync-indicator{position:fixed;bottom:24px;left:64px;z-index:9997;display:flex;align-items:center;gap:6px;background:white;border:1px solid #ddd;border-radius:20px;padding:5px 12px;font-size:11px;color:#888;box-shadow:0 2px 6px rgba(0,0,0,.15);transition:all .3s;pointer-events:none;}
@@ -325,16 +379,19 @@ function toggleSidebar(){
   const mapEl=document.getElementById('map');
   const btn=document.getElementById('toggle-btn');
   const locbtn=document.getElementById('locbtn');
+  const syncEl=document.getElementById('sync-indicator');
   if(sidebarVisible){
     side.classList.remove('hidden');
     mapEl.classList.remove('full'); mapEl.classList.add('split');
     btn.textContent='☰ Hide';
     locbtn.classList.remove('sidebar-hidden');
+    if(syncEl) syncEl.classList.remove('sidebar-hidden-sync');
   } else {
     side.classList.add('hidden');
     mapEl.classList.remove('split'); mapEl.classList.add('full');
     btn.textContent='☰ Show';
     locbtn.classList.add('sidebar-hidden');
+    if(syncEl) syncEl.classList.add('sidebar-hidden-sync');
   }
   setTimeout(()=>map.invalidateSize(),320);
 }
@@ -934,11 +991,11 @@ function render(){
         </div>
         <button class="vbtn vno${myDV?' chosen':''}" style="margin-bottom:6px;" ${myDV?'disabled':''} onclick="requestDelete(${s.id},event)">🗑️ Request Deletion${myDV?' ✔':' ('+dvCount+'/3)'}</button>`;
       })():''}
-      <div class="arow">
+      ${!confirmed?`<div class="arow">
         <button class="abtn aedit" onclick="startEdit(${s.id},event)">✏️ Edit</button>
-        ${!confirmed?`<button class="abtn adel" onclick="del(${s.id},event)">🗑️ Delete</button>`:''}
-        ${myV&&!confirmed?'<span style="font-size:10px;color:#aaa;margin-left:auto">✔ Voted</span>':''}
-      </div>`;
+        <button class="abtn adel" onclick="del(${s.id},event)">🗑️ Delete</button>
+        ${myV?'<span style="font-size:10px;color:#aaa;margin-left:auto">✔ Voted</span>':''}
+      </div>`:''}`;
     d.onclick=e=>{if(e.target.tagName!=='BUTTON'){map.flyTo([s.lat,s.lng],17,{duration:1.1});if(mks[s.id])mks[s.id].openPopup();}};
     el.appendChild(d);
   });
